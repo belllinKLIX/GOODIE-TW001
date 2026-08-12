@@ -1,17 +1,16 @@
-import { getRequestContext } from "@cloudflare/next-on-pages"; // 或是從 request context 取得
 import { saveAndNotifyContact } from "../../../lib/contact";
 
 export const runtime = "edge";
 
 export async function POST(request: Request) {
   try {
-    // 關鍵修復：優先從 Cloudflare request context 或 global 取得環境變數與 Binding
-    let cfEnv: any = {};
-    try {
-      cfEnv = (getRequestContext?.() as any)?.env || (process as any).env || {};
-    } catch {
-      cfEnv = (process as any).env || {};
-    }
+    // vinext / Cloudflare Worker 原生讀取 Binding 變數的方式
+    const globalObj = globalThis as any;
+    const cfEnv = {
+      DB: globalObj?.DB || globalObj?.__env__?.DB || process.env.DB,
+      RESEND_API_KEY: globalObj?.RESEND_API_KEY || globalObj?.__env__?.RESEND_API_KEY || process.env.RESEND_API_KEY,
+      UPLOADS: globalObj?.UPLOADS || globalObj?.__env__?.UPLOADS || process.env.UPLOADS,
+    };
 
     let submission: any = {};
     const contentType = request.headers.get("content-type") || "";
@@ -38,8 +37,8 @@ export async function POST(request: Request) {
       };
     }
 
-    // 呼叫邏輯，正確傳入抓到的 cfEnv
-    const result = await saveAndNotifyContact(cfEnv, submission);
+    // 將整理好的 cfEnv 傳入後端處理函數
+    const result = await saveAndNotifyContact(cfEnv as any, submission);
 
     return Response.json({
       ok: true,
