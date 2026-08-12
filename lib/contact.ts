@@ -217,10 +217,10 @@ async function sendResendEmail(
   });
   const result = await response.json().catch(() => null) as { id?: string; message?: string } | null;
   if (!response.ok || !result?.id) {
-  console.error("Resend 寄信失敗 (但已忽略以確保表單成功送出):", result?.message || response.status);
-  return null;
-}
-return result.id;
+    console.error("Resend 寄信失敗 (但已忽略以確保表單成功送出):", result?.message || response.status);
+    return null;
+  }
+  return result.id;
 }
 
 export async function saveAndNotifyContact(
@@ -230,7 +230,7 @@ export async function saveAndNotifyContact(
 ) {
   let uploadedToR2 = false;
 
-  // 1. 處理檔案上傳（R2 Storage）- 加上容錯
+  // 1. 處理檔案上傳（R2 Storage）
   try {
     if (submission.referenceFile && submission.referenceFileKey && bindings?.UPLOADS) {
       await bindings.UPLOADS.put(submission.referenceFileKey, submission.referenceFile.stream(), {
@@ -253,34 +253,40 @@ export async function saveAndNotifyContact(
     console.error("R2 File Upload Error (Ignored):", r2Error);
   }
 
-  // 2. 寫入 D1 資料庫 - 加上容錯與安全檢查
+  // 2. 寫入 D1 資料庫（嚴格對齊 Schema 欄位與 17 個佔位符）
   let dbSaved = false;
   if (bindings?.DB) {
     try {
+      const nowIso = submission.createdAt || new Date().toISOString();
+
       await bindings.DB.prepare(`
         INSERT INTO contact_inquiries (
           id, name, company, email, phone, project_type, timeline, quantity, description,
           reference_file_name, reference_file_type, reference_file_size, reference_file_key,
-          reference_file_token, reference_file_url, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+          reference_file_token, reference_file_url, email_status, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
-        submission.id,
-        submission.name || "",
-        submission.company || "",
-        submission.email || "",
-        submission.phone || "",
-        submission.projectType || "",
+        submission.id || crypto.randomUUID(),
+        submission.name || "未填寫",
+        submission.company || "未填寫",
+        submission.email || "未填寫",
+        submission.phone || "未填寫",
+        submission.projectType || "一般諮詢",
         submission.timeline || "",
         submission.quantity || "",
-        submission.description || "",
+        submission.description || "無需求描述",
         submission.referenceFileName || null,
         submission.referenceFileType || null,
         submission.referenceFileSize || null,
         submission.referenceFileKey || null,
         submission.referenceFileToken || null,
-        submission.referenceFileUrl || null
+        submission.referenceFileUrl || null,
+        "pending",
+        nowIso
       ).run();
+      
       dbSaved = true;
+      console.log("SUCCESS: D1 Record Saved!");
     } catch (dbError) {
       console.error("D1 Database Insert Error:", dbError);
     }
@@ -288,7 +294,7 @@ export async function saveAndNotifyContact(
     console.warn("Cloudflare D1 DB binding is missing!");
   }
 
-  // 3. 發送 Resend Email 通知 - 加上容錯
+  // 3. 發送 Resend Email 通知
   let emailSent = false;
   const apiKey = bindings?.RESEND_API_KEY || process.env.RESEND_API_KEY;
   if (apiKey) {
@@ -296,7 +302,7 @@ export async function saveAndNotifyContact(
       await sendResendEmail(
         submission,
         apiKey,
-        "onboarding@resend.dev", // 確保使用 Resend 免驗證測試寄件人
+        "onboarding@resend.dev",
         fetcher
       );
       emailSent = true;
@@ -307,7 +313,6 @@ export async function saveAndNotifyContact(
     console.warn("RESEND_API_KEY is missing!");
   }
 
-  // 4. 關鍵：不管中途有什麼元件沒設定好，永遠回傳成功狀態給前端
   return {
     id: submission.id,
     dbSaved,
