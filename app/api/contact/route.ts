@@ -4,12 +4,22 @@ export const runtime = "edge";
 
 export async function POST(request: Request) {
   try {
-    // vinext / Cloudflare Worker 原生讀取 Binding 變數的方式
-    const globalObj = globalThis as any;
-    const cfEnv = {
-      DB: globalObj?.DB || globalObj?.__env__?.DB || process.env.DB,
-      RESEND_API_KEY: globalObj?.RESEND_API_KEY || globalObj?.__env__?.RESEND_API_KEY || process.env.RESEND_API_KEY,
-      UPLOADS: globalObj?.UPLOADS || globalObj?.__env__?.UPLOADS || process.env.UPLOADS,
+    // 關鍵修復：全方位捕捉 Cloudflare Worker 注入的環境變數與 DB Binding
+    let cfEnv: any = {};
+    
+    // 嘗試從動態 import、globalThis、或 process 取得 env
+    try {
+      const workers = await import("cloudflare:workers");
+      cfEnv = workers.env || {};
+    } catch {
+      // ignore
+    }
+
+    const g = globalThis as any;
+    cfEnv = {
+      DB: cfEnv.DB || g.DB || g.__env__?.DB || process.env.DB,
+      RESEND_API_KEY: cfEnv.RESEND_API_KEY || g.RESEND_API_KEY || g.__env__?.RESEND_API_KEY || process.env.RESEND_API_KEY,
+      UPLOADS: cfEnv.UPLOADS || g.UPLOADS || g.__env__?.UPLOADS || process.env.UPLOADS,
     };
 
     let submission: any = {};
@@ -37,8 +47,8 @@ export async function POST(request: Request) {
       };
     }
 
-    // 將整理好的 cfEnv 傳入後端處理函數
-    const result = await saveAndNotifyContact(cfEnv as any, submission);
+    // 呼叫邏輯
+    const result = await saveAndNotifyContact(cfEnv, submission);
 
     return Response.json({
       ok: true,
