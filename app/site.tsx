@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { BadgeCheck, Box, ClipboardCheck, Clock3, DraftingCompass, Factory, FilePenLine, Gem, Gift, Globe2, Handshake, Headphones, IdCard, Megaphone, MessagesSquare, PackageOpen, PackageCheck, ShieldCheck, ShoppingBag, Truck, UserRoundCheck, UsersRound, type LucideIcon } from "lucide-react";
+import { BadgeCheck, Box, ClipboardCheck, Clock3, DraftingCompass, Factory, FilePenLine, Gem, Gift, Globe2, Handshake, Headphones, IdCard, MapPin, Megaphone, MessagesSquare, PackageOpen, PackageCheck, Phone, ShieldCheck, ShoppingBag, Truck, UserRoundCheck, UsersRound, type LucideIcon } from "lucide-react";
 import content from "../content/goodie-content.json";
 
 export type SitePage = "home" | "about" | "services" | "cases" | "process" | "contact";
@@ -86,15 +86,75 @@ function Hero({ page = "home" }: { page?: SitePage }) {
   return <section className={`inner-hero inner-${page}`}><div className="inner-copy"><h1>{title}</h1><h2>{subtitle}</h2><i /><p>{body}</p>{page !== "cases" && <ArrowButton href="/contact">與我們合作</ArrowButton>}</div><div className={`inner-photo reference-photo ref-${page}-photo`}><img src={pagePhotos[page as keyof typeof pagePhotos]} alt="Goodie 品牌商品系列" /></div></section>;
 }
 
-function ContactBand() {
-  const company = content.company;
-  return <section className="contact-band"><div className="contact-lead"><h2>準備好與我們合作了嗎？</h2><p>讓 Goodie 成為您品牌的最佳夥伴，創造更多可能。</p><ul><li>☎　{company.phone}</li>{company.email && <li>✉　{company.email}</li>}<li>●　{company.address}</li></ul></div><QuickForm /></section>;
+function InquiryForm({ className = "" }: { className?: string }) {
+  const [sent, setSent] = useState(false);
+
+  function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSent(true);
+  }
+
+  return (
+    <form className={`contact-form ${className}`} onSubmit={submit}>
+      <label>姓名 *<input name="name" placeholder="請輸入您的姓名" required /></label>
+      <label>公司名稱 *<input name="company" placeholder="請輸入公司名稱" required /></label>
+      <label>電子郵件 *<input name="email" type="email" placeholder="請輸入電子郵件" required /></label>
+      <label>聯絡電話 *<input name="phone" type="tel" placeholder="請輸入聯絡電話" required /></label>
+      <label className="full">專案類型 *
+        <select name="projectType" required defaultValue="">
+          <option value="" disabled>請選擇專案類型</option>
+          <option>股東會禮贈品</option>
+          <option>員工迎新禮盒</option>
+          <option>品牌活動</option>
+          <option>通路促銷</option>
+          <option>展覽活動</option>
+          <option>VIP Gift</option>
+        </select>
+      </label>
+      <label>預計專案時間
+        <select name="timeline" defaultValue="">
+          <option value="" disabled>請選擇預計專案時間</option>
+          <option>一個月內</option>
+          <option>1–3 個月</option>
+          <option>3 個月以上</option>
+        </select>
+      </label>
+      <label>預估數量
+        <select name="quantity" defaultValue="">
+          <option value="" disabled>請選擇預估數量</option>
+          <option>100–500</option>
+          <option>500–1,000</option>
+          <option>1,000 以上</option>
+        </select>
+      </label>
+      <label className="full">您的需求或專案描述 *
+        <textarea name="description" placeholder="請簡單說明您的需求、預算、數量、交期等資訊，我們將盡快與您聯繫。" required />
+      </label>
+      <label className="full upload">上傳參考圖片（選填）
+        <input name="reference" type="file" accept=".jpg,.jpeg,.png,.pdf,.ai" />
+        <small>支援 JPG / PNG / PDF / AI 檔案</small>
+      </label>
+      <button className="dark-button full" type="submit">{sent ? "需求已送出，我們會盡快與您聯繫" : "送出需求 →"}</button>
+    </form>
+  );
 }
 
-function QuickForm() {
-  const [sent, setSent] = useState(false);
-  function submit(e: FormEvent) { e.preventDefault(); setSent(true); }
-  return <form className="quick-form" onSubmit={submit}><input aria-label="姓名" placeholder="姓名" required /><input aria-label="公司名稱" placeholder="公司名稱" required /><input type="email" aria-label="電子郵件" placeholder="電子郵件" required /><input aria-label="聯絡電話" placeholder="聯絡電話" /><textarea aria-label="需求描述" placeholder="您的需求或專案描述" required /><button className="dark-button" type="submit">{sent ? "已收到，我們會與您聯絡" : "送出需求 →"}</button></form>;
+function ContactBand() {
+  const company = content.company;
+  return (
+    <section className="contact-band contact-band-full">
+      <div className="contact-lead">
+        <h2>準備好與我們合作了嗎？</h2>
+        <p>讓 Goodie 成為您品牌的最佳夥伴，創造更多可能。</p>
+        <ul>
+          <li><Phone aria-hidden="true" />{company.phone}</li>
+          {company.email && <li>{company.email}</li>}
+          <li><MapPin aria-hidden="true" />{company.address}</li>
+        </ul>
+      </div>
+      <InquiryForm className="contact-band-form" />
+    </section>
+  );
 }
 
 function Footer() {
@@ -151,9 +211,24 @@ function ProcessPage() {
 }
 
 function ContactPage() {
-  const [sent,setSent] = useState(false);
-  function submit(e: FormEvent){e.preventDefault();setSent(true)}
-  return <main className="contact-page"><div className="contact-page-inner"><section className="contact-intro"><h1>準備好與我們<br/>合作了嗎？</h1><i/><p>讓 Goodie 成為您品牌的最佳夥伴，<br/>創造更多可能。</p><ul><li>☎　+886-2-77137118</li><li>●　台北市中山區松江路67號10樓之一<br/><small>　　週一至週五 09:00 - 18:00</small></li></ul></section><form className="contact-form" onSubmit={submit}><label>姓名 *<input placeholder="請輸入您的姓名" required /></label><label>公司名稱 *<input placeholder="請輸入公司名稱" required /></label><label>電子郵件 *<input type="email" placeholder="請輸入電子郵件" required /></label><label>聯絡電話 *<input placeholder="請輸入聯絡電話" required /></label><label className="full">專案類型 *<select required defaultValue=""><option value="" disabled>請選擇專案類型</option><option>股東會禮贈品</option><option>員工迎新禮盒</option><option>品牌活動</option><option>通路促銷</option><option>VIP Gift</option></select></label><label>預計專案時間<select><option>請選擇預計專案時間</option><option>一個月內</option><option>1–3 個月</option><option>3 個月以上</option></select></label><label>預估數量<select><option>請選擇預估數量</option><option>100–500</option><option>500–1,000</option><option>1,000 以上</option></select></label><label className="full">您的需求或專案描述 *<textarea placeholder="請簡單說明您的需求、預算、數量、交期等資訊，我們將盡快與您聯繫。" required /></label><label className="full upload">上傳參考圖片（選填）<input type="file" accept=".jpg,.jpeg,.png,.pdf,.ai" /><small>支援 JPG / PNG / PDF / AI 檔案</small></label><button className="dark-button full" type="submit">{sent?"需求已送出，謝謝您":"開始專案 →"}</button></form></div><p className="contact-copyright">© 2026 Goodie International Co., Ltd. All Rights Reserved.</p></main>;
+  const company = content.company;
+  return (
+    <main className="contact-page">
+      <div className="contact-page-inner">
+        <section className="contact-intro">
+          <h1>準備好與我們<br />合作了嗎？</h1>
+          <i />
+          <p>讓 Goodie 成為您品牌的最佳夥伴，<br />創造更多可能。</p>
+          <ul>
+            <li><Phone aria-hidden="true" />{company.phone}</li>
+            <li><MapPin aria-hidden="true" />{company.address}<br /><small>{company.businessHours}</small></li>
+          </ul>
+        </section>
+        <InquiryForm />
+      </div>
+      <p className="contact-copyright">© 2026 Goodie International Co., Ltd. All Rights Reserved.</p>
+    </main>
+  );
 }
 
 export function GoodieSite({ page }: { page: SitePage }) {
