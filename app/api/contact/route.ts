@@ -1,4 +1,3 @@
-import { env } from "cloudflare:workers";
 import { saveAndNotifyContact } from "../../../lib/contact";
 
 export const runtime = "edge";
@@ -30,16 +29,19 @@ export async function POST(request: Request) {
       };
     }
 
-    // 關鍵修復：組合來自 cloudflare:workers 的 env 與全域環境變數
+    // 關鍵修復：安全取得 Cloudflare 注入的 Bindings，不使用會破壞打包的靜態 import
+    const g = globalThis as any;
+    const p = (process as any).env || {};
+
     const activeEnv = {
-      DB: (env as any)?.DB || (globalThis as any)?.DB || (process.env as any)?.DB,
-      RESEND_API_KEY: (env as any)?.RESEND_API_KEY || (globalThis as any)?.RESEND_API_KEY || process.env.RESEND_API_KEY,
-      UPLOADS: (env as any)?.UPLOADS || (globalThis as any)?.UPLOADS || (process.env as any)?.UPLOADS,
+      DB: g.DB || g.__env__?.DB || p.DB,
+      RESEND_API_KEY: g.RESEND_API_KEY || g.__env__?.RESEND_API_KEY || p.RESEND_API_KEY,
+      UPLOADS: g.UPLOADS || g.__env__?.UPLOADS || p.UPLOADS,
     };
 
     console.log("Active DB Binding Check:", !!activeEnv.DB);
 
-    // 呼叫邏輯，正確傳入 activeEnv
+    // 呼叫寄信與存庫邏輯
     const result = await saveAndNotifyContact(activeEnv as any, submission);
 
     return Response.json({
