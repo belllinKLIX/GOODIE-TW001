@@ -1,10 +1,18 @@
-import { env } from "cloudflare:workers";
+import { getRequestContext } from "@cloudflare/next-on-pages"; // 或是從 request context 取得
 import { saveAndNotifyContact } from "../../../lib/contact";
 
 export const runtime = "edge";
 
 export async function POST(request: Request) {
   try {
+    // 關鍵修復：優先從 Cloudflare request context 或 global 取得環境變數與 Binding
+    let cfEnv: any = {};
+    try {
+      cfEnv = (getRequestContext?.() as any)?.env || (process as any).env || {};
+    } catch {
+      cfEnv = (process as any).env || {};
+    }
+
     let submission: any = {};
     const contentType = request.headers.get("content-type") || "";
 
@@ -30,7 +38,8 @@ export async function POST(request: Request) {
       };
     }
 
-    const result = await saveAndNotifyContact(env as any, submission);
+    // 呼叫邏輯，正確傳入抓到的 cfEnv
+    const result = await saveAndNotifyContact(cfEnv, submission);
 
     return Response.json({
       ok: true,
