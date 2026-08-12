@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import "tailwindcss/index.css";
 
 :root{--orange:#ffb20f;--orange-deep:#f5a400;--ink:#0c0c0d;--muted:#666;--line:#dedede;--cream:#fff9ee;--max:1180px}
 *{box-sizing:border-box}
