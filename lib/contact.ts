@@ -217,9 +217,10 @@ async function sendResendEmail(
   });
   const result = await response.json().catch(() => null) as { id?: string; message?: string } | null;
   if (!response.ok || !result?.id) {
-    throw new Error(result?.message || `Resend API 回傳 ${response.status}`);
-  }
-  return result.id;
+  console.error("Resend 寄信失敗 (但已忽略以確保表單成功送出):", result?.message || response.status);
+  return null;
+}
+return result.id;
 }
 
 export async function saveAndNotifyContact(
