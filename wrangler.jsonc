@@ -1,7 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "goodie-tw001",
-  "main": ".vinext/server/index.mjs",
   "compatibility_date": "2024-09-23",
   "compatibility_flags": [
     "nodejs_compat"
@@ -12,7 +11,7 @@
     {
       "binding": "DB",
       "database_name": "goodie-db",
-      "database_id": "834c0e48-35ed-4564-bd47-f5cbfbcfdb4d" // 請確認這是您的 D1 Database ID，如不確定可至 D1 面板複製
+      "database_id": "834c0e48-35ed-4564-bd47-f5cbfbcfdb4d"
     }
   ],
 
