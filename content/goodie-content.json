@@ -1,0 +1,55 @@
+{
+  "company": {
+    "name": "Goodie",
+    "phone": "+886-2-77137118",
+    "email": "",
+    "address": "台北市中山區松江路67號10樓之一",
+    "businessHours": "週一至週五 09:00 - 18:00"
+  },
+  "navigation": [
+    { "slug": "about", "label": "關於我們" },
+    { "slug": "services", "label": "專案服務" },
+    { "slug": "cases", "label": "成功案例" },
+    { "slug": "process", "label": "合作流程" }
+  ],
+  "home": {
+    "headlineBefore": "We make",
+    "headlineOrange": "goodie",
+    "headlineAfter": "things happen.",
+    "subheading": "打造值得被記住的品牌商品",
+    "description": "從商品規劃、客製化開發、供應鏈整合到大量生產，我們陪伴企業完成每一個品牌商品專案。",
+    "primaryButton": "了解我們的服務",
+    "secondaryButton": "查看成功案例",
+    "categories": ["飲品器皿", "包袋類", "生活用品", "文具禮品", "3C 電子", "服飾配件"]
+  },
+  "pageHeroes": {
+    "about": { "title": "About Goodie", "subtitle": "創造價值，讓品牌被記住", "description": "Goodie 專注於品牌商品的策劃與製作，從設計、開發、採購到生產與配送，提供企業完整的一站式服務。" },
+    "services": { "title": "專案服務", "subtitle": "從不同企業需求出發，打造最適合的品牌商品專案。", "description": "Goodie 提供多元的品牌商品解決方案，從策略規劃、設計開發、生產製造到物流配送，讓您的品牌價值透過商品完美傳遞。" },
+    "cases": { "title": "成功案例", "subtitle": "每一份專案，都是我們用心創造的價值", "description": "從股東會禮贈品、員工迎新禮盒到品牌活動，我們協助企業打造專屬的品牌體驗。" },
+    "process": { "title": "合作流程", "subtitle": "簡單六步驟，讓專案順利落地", "description": "從需求討論到商品交付，Goodie 提供透明、高效率的專案流程，確保每個細節都符合您的期待。" }
+  },
+  "services": [
+    { "icon": "◎", "title": "股東會禮贈品", "description": "適合上市櫃公司、股東會、法說會、ESG 年度活動等場合。" },
+    { "icon": "◇", "title": "員工迎新禮盒", "description": "適合新人報到、Welcome Kit、Employer Branding 等情境。" },
+    { "icon": "◁", "title": "品牌活動", "description": "適合新品發表、品牌快閃、行銷活動、路跑、Festival 等活動。" },
+    { "icon": "♧", "title": "通路促銷", "description": "適合滿額贈、集點活動、開幕活動、節慶促銷等需求。" },
+    { "icon": "▣", "title": "展覽活動", "description": "適合國內外展覽、Booth 活動，提升品牌曝光與形象。" },
+    { "icon": "◇", "title": "VIP Gift", "description": "適合貴賓、經銷商、高端客戶、合作夥伴等贈禮需求。" }
+  ],
+  "processSteps": [
+    { "number": "01", "title": "需求洽談", "description": "了解您的需求與預算，提供初步建議與方向。" },
+    { "number": "02", "title": "提案與報價", "description": "根據需求提供專案提案與商品建議，並提供報價。" },
+    { "number": "03", "title": "打樣與確認", "description": "提供樣品或模擬圖確認商品細節與客製內容。" },
+    { "number": "04", "title": "訂單確認", "description": "確認商品、數量、交期與付款條件，正式成立訂單。" },
+    { "number": "05", "title": "生產製作", "description": "專案進入生產階段，嚴格控管品質與進度。" },
+    { "number": "06", "title": "品檢與交付", "description": "進行品檢、包裝後安排出貨，確保準時交付。" }
+  ],
+  "cases": [
+    { "slug": "mtk-holdings", "category": "股東會禮品", "title": "MTK Holdings 股東會禮品專案", "description": "為上市櫃公司股東會打造實用且具質感的禮贈品。", "year": "2026", "quantity": "1,200 份", "items": ["保溫瓶", "折疊椅", "保冷袋"], "detail": "從股東輪廓與品牌識別出發，Goodie 完成商品建議、視覺模擬、生產與包裝交付，讓實用性與企業質感同時被看見。" },
+    { "slug": "acme-welcome-kit", "category": "員工禮贈", "title": "ACME Corporation 迎新禮盒", "description": "為新進同仁準備專屬 Welcome Kit，打造溫暖入職體驗。", "year": "2026", "quantity": "800 組", "items": ["保溫杯", "筆記本", "帆布袋"], "detail": "以一致的品牌色與開箱體驗串起每一件迎新用品，協助企業傳達文化、提升新進同仁的歸屬感。" },
+    { "slug": "run-for-good", "category": "品牌活動", "title": "Run For Good 路跑活動", "description": "品牌路跑活動周邊商品設計與製作，創造活動話題。", "year": "2026", "quantity": "3,000 份", "items": ["帽子", "T-shirt", "水壺"], "detail": "從活動主視覺延伸到穿戴與補水用品，讓參與者在活動現場與日常生活中持續看見品牌。" },
+    { "slug": "daily-fresh", "category": "通路促銷", "title": "Daily Fresh 滿額贈活動", "description": "結合品牌調性設計實用贈品，有效提升消費者認同。", "year": "2026", "quantity": "5,000 份", "items": ["保鮮盒", "玻璃杯", "購物袋"], "detail": "以日常高使用率為選品核心，搭配清爽的品牌識別，讓促銷贈品成為顧客願意留下的生活用品。" },
+    { "slug": "technova", "category": "展覽活動", "title": "TechNova 國際展覽專案", "description": "國際展覽整體周邊規劃，強化品牌專業形象。", "year": "2026", "quantity": "2,000 份", "items": ["識別證", "提袋", "筆記本"], "detail": "整合展場接待、識別與會後使用情境，建立一致而專業的品牌接觸點，強化國際訪客印象。" },
+    { "slug": "lux-co", "category": "VIP Gift", "title": "LUX&CO VIP 客製禮盒", "description": "為重要客戶與合作夥伴打造高端客製贈禮。", "year": "2026", "quantity": "300 組", "items": ["酒具組", "保溫瓶", "客製木盒"], "detail": "從材質、開盒層次到品牌燙印逐一打磨，呈現符合高端客群期待的專屬贈禮體驗。" }
+  ]
+}
