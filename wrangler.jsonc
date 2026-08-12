@@ -1,10 +1,14 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "goodie-tw001",
+  "main": ".vinext/server/index.mjs",
   "compatibility_date": "2024-09-23",
   "compatibility_flags": [
     "nodejs_compat"
   ],
+  "site": {
+    "bucket": ".vinext/client"
+  },
 
   // 1. 綁定 D1 資料庫
   "d1_databases": [
