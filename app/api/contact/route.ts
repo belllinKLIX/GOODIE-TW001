@@ -1,17 +1,10 @@
+import { env } from "cloudflare:workers";
 import { saveAndNotifyContact } from "../../../lib/contact";
 
 export const runtime = "edge";
 
-// 關鍵修復：vinext 會將 Cloudflare Bindings 傳在 request 的 context 中，或第二個參數
-export async function POST(request: Request, context: any) {
+export async function POST(request: Request) {
   try {
-    // 從傳入的 context 或 request 中提取 Cloudflare Bindings (DB, RESEND_API_KEY)
-    const cfEnv = 
-      context?.env || 
-      (request as any).env || 
-      (request as any).cf?.env || 
-      (globalThis as any).DB ? (globalThis as any) : {};
-
     let submission: any = {};
     const contentType = request.headers.get("content-type") || "";
 
@@ -27,7 +20,7 @@ export async function POST(request: Request, context: any) {
         timeline: formData.get("timeline")?.toString() || formData.get("timeframe")?.toString() || "",
         quantity: formData.get("quantity")?.toString() || "",
         description: formData.get("description")?.toString() || "",
-        referenceFile: formData.get("file") || formData.get("referenceFile") || null,
+        referenceFile: formData.get("reference") || formData.get("file") || formData.get("referenceFile") || null,
       };
     } else {
       const json = await request.json().catch(() => ({}));
@@ -37,8 +30,17 @@ export async function POST(request: Request, context: any) {
       };
     }
 
-    // 將正確獲取的 Bindings 傳入邏輯
-    const result = await saveAndNotifyContact(cfEnv, submission);
+    // 關鍵修復：組合來自 cloudflare:workers 的 env 與全域環境變數
+    const activeEnv = {
+      DB: (env as any)?.DB || (globalThis as any)?.DB || (process.env as any)?.DB,
+      RESEND_API_KEY: (env as any)?.RESEND_API_KEY || (globalThis as any)?.RESEND_API_KEY || process.env.RESEND_API_KEY,
+      UPLOADS: (env as any)?.UPLOADS || (globalThis as any)?.UPLOADS || (process.env as any)?.UPLOADS,
+    };
+
+    console.log("Active DB Binding Check:", !!activeEnv.DB);
+
+    // 呼叫邏輯，正確傳入 activeEnv
+    const result = await saveAndNotifyContact(activeEnv as any, submission);
 
     return Response.json({
       ok: true,
