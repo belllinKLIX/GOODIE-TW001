@@ -2,25 +2,15 @@ import { saveAndNotifyContact } from "../../../lib/contact";
 
 export const runtime = "edge";
 
-export async function POST(request: Request) {
+// 關鍵修復：vinext 會將 Cloudflare Bindings 傳在 request 的 context 中，或第二個參數
+export async function POST(request: Request, context: any) {
   try {
-    // 關鍵修復：全方位捕捉 Cloudflare Worker 注入的環境變數與 DB Binding
-    let cfEnv: any = {};
-    
-    // 嘗試從動態 import、globalThis、或 process 取得 env
-    try {
-      const workers = await import("cloudflare:workers");
-      cfEnv = workers.env || {};
-    } catch {
-      // ignore
-    }
-
-    const g = globalThis as any;
-    cfEnv = {
-      DB: cfEnv.DB || g.DB || g.__env__?.DB || process.env.DB,
-      RESEND_API_KEY: cfEnv.RESEND_API_KEY || g.RESEND_API_KEY || g.__env__?.RESEND_API_KEY || process.env.RESEND_API_KEY,
-      UPLOADS: cfEnv.UPLOADS || g.UPLOADS || g.__env__?.UPLOADS || process.env.UPLOADS,
-    };
+    // 從傳入的 context 或 request 中提取 Cloudflare Bindings (DB, RESEND_API_KEY)
+    const cfEnv = 
+      context?.env || 
+      (request as any).env || 
+      (request as any).cf?.env || 
+      (globalThis as any).DB ? (globalThis as any) : {};
 
     let submission: any = {};
     const contentType = request.headers.get("content-type") || "";
@@ -47,7 +37,7 @@ export async function POST(request: Request) {
       };
     }
 
-    // 呼叫邏輯
+    // 將正確獲取的 Bindings 傳入邏輯
     const result = await saveAndNotifyContact(cfEnv, submission);
 
     return Response.json({
