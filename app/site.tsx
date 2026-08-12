@@ -87,11 +87,34 @@ function Hero({ page = "home" }: { page?: SitePage }) {
 }
 
 function InquiryForm({ className = "" }: { className?: string }) {
-  const [sent, setSent] = useState(false);
+  const [status, setStatus] = useState<"idle" | "submitting" | "sent" | "error">("idle");
+  const [message, setMessage] = useState("");
 
-  function submit(e: FormEvent<HTMLFormElement>) {
+  async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setSent(true);
+    const form = e.currentTarget;
+    setStatus("submitting");
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        body: new FormData(form),
+        headers: { Accept: "application/json" },
+      });
+      const result = await response.json().catch(() => null) as { message?: string } | null;
+
+      if (!response.ok) {
+        throw new Error(result?.message || "目前無法送出，請稍後再試。");
+      }
+
+      form.reset();
+      setStatus("sent");
+      setMessage(result?.message || "需求已送出，我們會盡快與您聯繫。");
+    } catch (error) {
+      setStatus("error");
+      setMessage(error instanceof Error ? error.message : "目前無法送出，請稍後再試。");
+    }
   }
 
   return (
@@ -134,7 +157,10 @@ function InquiryForm({ className = "" }: { className?: string }) {
         <input name="reference" type="file" accept=".jpg,.jpeg,.png,.pdf,.ai" />
         <small>支援 JPG / PNG / PDF / AI 檔案</small>
       </label>
-      <button className="dark-button full" type="submit">{sent ? "需求已送出，我們會盡快與您聯繫" : "送出需求 →"}</button>
+      <button className="dark-button full" type="submit" disabled={status === "submitting"}>
+        {status === "submitting" ? "正在送出…" : "送出需求 →"}
+      </button>
+      {message && <p className={`form-status full ${status}`} role="status" aria-live="polite">{message}</p>}
     </form>
   );
 }
@@ -231,6 +257,22 @@ function ContactPage() {
   );
 }
 
+function LineFloatingButton() {
+  return (
+    <a
+      className="line-floating-button"
+      href={content.company.lineUrl}
+      target="_blank"
+      rel="noreferrer"
+      aria-label="使用 LINE 聯絡 Goodie（另開新視窗）"
+      title="使用 LINE 聯絡我們"
+    >
+      <span aria-hidden="true">LINE</span>
+      <b>LINE 聯絡</b>
+    </a>
+  );
+}
+
 export function GoodieSite({ page }: { page: SitePage }) {
-  return <div className="site-shell"><Header page={page}/>{page==="home"&&<HomePage/>}{page==="about"&&<AboutPage/>}{page==="services"&&<ServicesPage/>}{page==="cases"&&<CasesPage/>}{page==="process"&&<ProcessPage/>}{page==="contact"&&<ContactPage/>}{page!=="contact"&&<Footer/>}</div>;
+  return <div className="site-shell"><Header page={page}/>{page==="home"&&<HomePage/>}{page==="about"&&<AboutPage/>}{page==="services"&&<ServicesPage/>}{page==="cases"&&<CasesPage/>}{page==="process"&&<ProcessPage/>}{page==="contact"&&<ContactPage/>}{page!=="contact"&&<Footer/>}<LineFloatingButton /></div>;
 }

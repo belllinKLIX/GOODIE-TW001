@@ -66,3 +66,15 @@ test("keeps the standalone contact page on the shared nine-field form", async ()
   assert.match(html, /準備好與我們/);
   assert.equal(countNamedFields(html), 9);
 });
+
+test("shows the shared LINE contact button on every page", async () => {
+  const paths = ["/", "/about", "/services", "/cases", "/process", "/contact"];
+
+  for (const pathname of paths) {
+    const response = await render(pathname);
+    assert.equal(response.status, 200, pathname);
+    const html = await response.text();
+    assert.match(html, /class="line-floating-button"/, pathname);
+    assert.match(html, /href="https:\/\/line\.me\/ti\/p\/3_w13ed_Sy"/, pathname);
+  }
+});

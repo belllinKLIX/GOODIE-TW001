@@ -4,7 +4,8 @@
     "phone": "+886-2-77137118",
     "email": "",
     "address": "台北市中山區松江路67號10樓之一",
-    "businessHours": "週一至週五 09:00 - 18:00"
+    "businessHours": "週一至週五 09:00 - 18:00",
+    "lineUrl": "https://line.me/ti/p/3_w13ed_Sy"
   },
   "navigation": [
     { "slug": "about", "label": "關於我們" },
