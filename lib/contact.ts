@@ -191,7 +191,7 @@ async function sendResendEmail(
   fetcher: typeof fetch,
 ) {
   const payload: Record<string, unknown> = {
-    from: fromEmail,
+    from: "onboarding@resend.dev",
     to: ["bell.lin@klixtw.com"],
     reply_to: submission.email,
     subject: `【Goodie 網站詢問】${submission.company}｜${submission.name}`,
