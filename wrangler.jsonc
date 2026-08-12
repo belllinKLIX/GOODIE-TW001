@@ -6,9 +6,6 @@
   "compatibility_flags": [
     "nodejs_compat"
   ],
-  "site": {
-    "bucket": ".vinext/client"
-  },
 
   // 1. 綁定 D1 資料庫
   "d1_databases": [
