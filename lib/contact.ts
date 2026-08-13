@@ -64,6 +64,7 @@ const FILE_TYPES: Record<string, string> = {
   ai: "application/postscript",
 };
 
+// 修正 1: 匯出 ContactValidationError
 export class ContactValidationError extends Error {}
 
 function cleanText(value: FormDataEntryValue | null, maximum: number) {
@@ -91,6 +92,7 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 
+// 修正 2: 匯出 parseContactForm
 export function parseContactForm(formData: FormData): ContactSubmission {
   const name = cleanText(formData.get("name"), 100);
   const company = cleanText(formData.get("company"), 160);
@@ -283,6 +285,7 @@ async function sendResendEmail(
   };
 }
 
+// 修正 3: 匯出 saveAndNotifyContact
 export async function saveAndNotifyContact(
   bindings: ContactBindings,
   submission: ContactSubmission,
