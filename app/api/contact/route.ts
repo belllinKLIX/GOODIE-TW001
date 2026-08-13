@@ -59,28 +59,26 @@ export async function POST(request: Request, context?: any) {
       };
     }
 
-    // 關鍵修復：從全方位環境（包含 Cloudflare Request Context）精準取出 DB / RESEND_API_KEY
-    const reqCtx = (request as any).env || (request as any).context?.env || context?.env || {};
+    // 關鍵修復：窮舉所有可能的 Cloudflare Bindings 注入位置
     const g = globalThis as any;
     const p = (process as any).env || {};
+    const reqAny = request as any;
+
+    // 嘗試從 Cloudflare 官方的全域/Context 物件提值
+    let cfEnv: any = {};
+    try {
+      if (typeof g.getCLOUDFLARE_CONTEXT === "function") {
+        cfEnv = g.getCLOUDFLARE_CONTEXT().env;
+      }
+    } catch (e) {}
 
     const activeEnv = {
-      DB: reqCtx.DB || g.DB || g.__env__?.DB || p.DB,
-      RESEND_API_KEY: reqCtx.RESEND_API_KEY || g.RESEND_API_KEY || g.__env__?.RESEND_API_KEY || p.RESEND_API_KEY,
-      UPLOADS: reqCtx.UPLOADS || g.UPLOADS || g.__env__?.UPLOADS || p.UPLOADS,
+      DB: reqAny.env?.DB || reqAny.context?.env?.DB || context?.env?.DB || cfEnv.DB || g.DB || g.__env__?.DB || p.DB,
+      RESEND_API_KEY: reqAny.env?.RESEND_API_KEY || reqAny.context?.env?.RESEND_API_KEY || context?.env?.RESEND_API_KEY || cfEnv.RESEND_API_KEY || g.RESEND_API_KEY || g.__env__?.RESEND_API_KEY || p.RESEND_API_KEY,
+      UPLOADS: reqAny.env?.UPLOADS || reqAny.context?.env?.UPLOADS || context?.env?.UPLOADS || cfEnv.UPLOADS || g.UPLOADS || g.__env__?.UPLOADS || p.UPLOADS,
     };
 
-    console.log("DB Binding Check Status:", !!activeEnv.DB);
-
-    // 如果未找到 DB Binding，回傳警告
-    if (!activeEnv.DB) {
-      return Response.json({
-        ok: false,
-        message: "Cloudflare D1 的 DB 綁定尚未設定。",
-      });
-    }
-
-    // 4. 執行存庫與寄信
+    // 執行存庫與寄信（即使沒有存庫，saveAndNotifyContact 內部也會處理）
     const result = await saveAndNotifyContact(activeEnv as any, submission);
 
     return Response.json({
