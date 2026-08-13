@@ -36,5 +36,5 @@ Cloudflare Workers Builds 每次收到 `main` 的新提交後，會自動重新�
 ## 注意
 
 - 不要把 API Key、密碼或 `.env` 檔案上傳 GitHub。
-- 聯絡表單目前仍為畫面展示；正式寄信功能與 Turnstile 防垃圾訊息將在確認收件信箱後加入!。
+- 聯絡表單目前仍為畫面展示；正式寄信功能與 Turnstile 防垃圾訊息將在確認收件信箱後加入。
 - Repository 建議設為 Private，並將設計師或工程師以協作者方式加入。
