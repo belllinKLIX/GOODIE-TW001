@@ -1,50 +1,38 @@
-import { parseContactForm, saveAndNotifyContact } from "../../../lib/contact";
+import { env } from "cloudflare:workers";
+import {
+  ContactValidationError,
+  parseContactForm,
+  saveAndNotifyContact,
+} from "../../../lib/contact";
 
 export const runtime = "edge";
 
 export async function POST(request: Request) {
   try {
-    let submission: any = {};
     const contentType = request.headers.get("content-type") || "";
-
-    if (contentType.toLowerCase().includes("multipart/form-data")) {
-      const formData = await request.formData();
-      // 關鍵修復：使用 parseContactForm 解析，自動產生 referenceFileName 與 FileKey
-      submission = parseContactForm(formData);
-    } else {
-      const json = await request.json().catch(() => ({}));
-      submission = {
-        id: crypto.randomUUID(),
-        createdAt: new Date().toISOString(),
-        ...json
-      };
+    if (!contentType.toLowerCase().includes("multipart/form-data")) {
+      return Response.json({ ok: false, message: "表單格式不正確。" }, { status: 415 });
     }
 
-    // 安全取得 Cloudflare 注入的 Bindings
-    const g = globalThis as any;
-    const p = (process as any).env || {};
-
-    const activeEnv = {
-      DB: g.DB || g.__env__?.DB || p.DB,
-      RESEND_API_KEY: g.RESEND_API_KEY || g.__env__?.RESEND_API_KEY || p.RESEND_API_KEY,
-      UPLOADS: g.UPLOADS || g.__env__?.UPLOADS || p.UPLOADS,
-    };
-
-    // 呼叫寄信與存庫邏輯
-    const result = await saveAndNotifyContact(activeEnv as any, submission);
+    const submission = parseContactForm(await request.formData());
+    const result = await saveAndNotifyContact(env, submission);
 
     return Response.json({
       ok: true,
       submissionId: result.id,
-      message: "需求已送出，我們會儘快與您聯繫。",
+      notificationSent: result.notificationSent,
+      message: result.notificationSent
+        ? "需求已送出，我們會盡快與您聯繫。"
+        : "需求已成功保存；通知信暫時未寄出，我們仍可在系統中看到您的資料。",
     });
-
-  } catch (error: any) {
-    console.error("API Route Error Catch:", error);
-
+  } catch (error) {
+    if (error instanceof ContactValidationError) {
+      return Response.json({ ok: false, message: error.message }, { status: 400 });
+    }
+    console.error("Contact form submission failed", error);
     return Response.json({
       ok: false,
-      message: error.message || "處理請求時發生錯誤，請稍後再試。",
-    }, { status: 400 });
+      message: "目前無法送出，請稍後再試，或使用右下角 LINE 與我們聯絡。",
+    }, { status: 500 });
   }
 }

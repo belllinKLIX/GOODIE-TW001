@@ -56,6 +56,13 @@ export interface ContactSubmission {
 
 const MAX_FILE_SIZE = 8 * 1024 * 1024;
 const ALLOWED_FILE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "pdf", "ai"]);
+const FILE_TYPES: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  pdf: "application/pdf",
+  ai: "application/postscript",
+};
 
 function cleanText(value: FormDataEntryValue | null, maximum: number) {
   return typeof value === "string" ? value.trim().slice(0, maximum) : "";
@@ -68,6 +75,19 @@ function fileExtension(filename: string) {
 function safeFilename(filename: string) {
   const normalized = filename.normalize("NFKC").replace(/[^\p{L}\p{N}._-]+/gu, "-");
   return normalized.slice(0, 120) || "reference-file";
+}
+
+function isUploadedFile(value: FormDataEntryValue | null): value is File {
+  if (!value || typeof value === "string") return false;
+  const candidate = value as File;
+  return typeof candidate.name === "string"
+    && typeof candidate.size === "number"
+    && typeof candidate.arrayBuffer === "function"
+    && candidate.size > 0;
+}
+
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
 }
 
 export function parseContactForm(formData: FormData): ContactSubmission {
@@ -88,7 +108,7 @@ export function parseContactForm(formData: FormData): ContactSubmission {
   }
 
   const referenceEntry = formData.get("reference");
-  const referenceFile = referenceEntry instanceof File && referenceEntry.size > 0 ? referenceEntry : null;
+  const referenceFile = isUploadedFile(referenceEntry) ? referenceEntry : null;
   if (referenceFile) {
     if (referenceFile.size > MAX_FILE_SIZE) {
       throw new ContactValidationError("上傳檔案不可超過 8MB。");
@@ -100,6 +120,7 @@ export function parseContactForm(formData: FormData): ContactSubmission {
 
   const id = crypto.randomUUID();
   const referenceFileName = referenceFile ? safeFilename(referenceFile.name) : null;
+  const referenceFileExtension = referenceFileName ? fileExtension(referenceFileName) : "";
   const referenceFileKey = referenceFile
     ? `contact-submissions/${new Date().toISOString().slice(0, 7)}/${id}/${referenceFileName}`
     : null;
@@ -116,7 +137,7 @@ export function parseContactForm(formData: FormData): ContactSubmission {
     description,
     referenceFile,
     referenceFileName,
-    referenceFileType: referenceFile?.type || null,
+    referenceFileType: referenceFile ? (referenceFile.type || FILE_TYPES[referenceFileExtension] || "application/octet-stream") : null,
     referenceFileSize: referenceFile?.size || null,
     referenceFileKey,
     referenceFileToken: referenceFile ? crypto.randomUUID() : null,
@@ -190,37 +211,64 @@ async function sendResendEmail(
   fromEmail: string,
   fetcher: typeof fetch,
 ) {
-  const payload: Record<string, unknown> = {
-    from: "onboarding@resend.dev",
+  const basePayload: Record<string, unknown> = {
+    from: fromEmail,
     to: ["bell.lin@klixtw.com"],
     reply_to: submission.email,
     subject: `【Goodie 網站詢問】${submission.company}｜${submission.name}`,
     html: buildContactEmailHtml(submission),
   };
 
-  if (submission.referenceFile && submission.referenceFileName) {
-    payload.attachments = [{
-      filename: submission.referenceFileName,
-      content: arrayBufferToBase64(await submission.referenceFile.arrayBuffer()),
-    }];
+  async function deliver(payload: Record<string, unknown>, attempt: string) {
+    const response = await fetcher("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": `goodie-contact-${submission.id}-${attempt}`,
+        "User-Agent": "Goodie-Website/1.0",
+      },
+      body: JSON.stringify(payload),
+    });
+    const result = await response.json().catch(() => null) as { id?: string; message?: string; name?: string } | null;
+    if (!response.ok || !result?.id) {
+      throw new Error(result?.message || result?.name || `Resend API 回傳 ${response.status}`);
+    }
+    return result.id;
   }
 
-  const response = await fetcher("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "Idempotency-Key": `goodie-contact-${submission.id}`,
-      "User-Agent": "Goodie-Website/1.0",
-    },
-    body: JSON.stringify(payload),
-  });
-  const result = await response.json().catch(() => null) as { id?: string; message?: string } | null;
-  if (!response.ok || !result?.id) {
-    console.error("Resend 寄信失敗 (但已忽略以確保表單成功送出):", result?.message || response.status);
-    return null;
+  if (!submission.referenceFile || !submission.referenceFileName) {
+    return { id: await deliver(basePayload, "notification-only"), attachmentIncluded: false, warning: null };
   }
-  return result.id;
+
+  let attachment: { filename: string; content: string } | null = null;
+  let warning: string | null = null;
+  try {
+    attachment = {
+      filename: submission.referenceFileName,
+      content: arrayBufferToBase64(await submission.referenceFile.arrayBuffer()),
+    };
+  } catch (error) {
+    warning = `附件轉換失敗，已改寄無附件通知信：${errorMessage(error)}`;
+  }
+
+  if (attachment) {
+    try {
+      return {
+        id: await deliver({ ...basePayload, attachments: [attachment] }, "with-attachment"),
+        attachmentIncluded: true,
+        warning: null,
+      };
+    } catch (error) {
+      warning = `附件寄送失敗，已改寄無附件通知信：${errorMessage(error)}`;
+    }
+  }
+
+  return {
+    id: await deliver(basePayload, "attachment-fallback"),
+    attachmentIncluded: false,
+    warning,
+  };
 }
 
 export async function saveAndNotifyContact(
@@ -228,95 +276,103 @@ export async function saveAndNotifyContact(
   submission: ContactSubmission,
   fetcher: typeof fetch = fetch,
 ) {
-  let uploadedToR2 = false;
+  if (!bindings.DB) throw new Error("Cloudflare D1 的 DB 綁定尚未設定。");
 
-  // 1. 處理檔案上傳（R2 Storage）
-  try {
-    if (submission.referenceFile && submission.referenceFileKey && bindings?.UPLOADS) {
+  let uploadedToR2 = false;
+  let storageWarning: string | null = null;
+  if (submission.referenceFile && submission.referenceFileKey && bindings.UPLOADS) {
+    try {
       await bindings.UPLOADS.put(submission.referenceFileKey, submission.referenceFile.stream(), {
         httpMetadata: { contentType: submission.referenceFileType || "application/octet-stream" },
         customMetadata: { submissionId: submission.id, originalName: submission.referenceFileName || "reference-file" },
       });
       uploadedToR2 = true;
-
       if (submission.referenceFileToken) {
         const fileUrl = new URL(`/api/contact/files/${submission.id}`, "https://goodie-tw.com");
         fileUrl.searchParams.set("token", submission.referenceFileToken);
         submission.referenceFileUrl = fileUrl.toString();
       }
-    } else {
+    } catch (error) {
+      storageWarning = `R2 上傳失敗，已保留檔案資訊並改用 Email 附件：${errorMessage(error)}`;
       submission.referenceFileKey = null;
       submission.referenceFileToken = null;
       submission.referenceFileUrl = null;
     }
-  } catch (r2Error) {
-    console.error("R2 File Upload Error (Ignored):", r2Error);
-  }
-
-  // 2. 寫入 D1 資料庫（嚴格對齊 Schema 欄位與 17 個佔位符）
-  let dbSaved = false;
-  if (bindings?.DB) {
-    try {
-      const nowIso = submission.createdAt || new Date().toISOString();
-
-      await bindings.DB.prepare(`
-        INSERT INTO contact_inquiries (
-          id, name, company, email, phone, project_type, timeline, quantity, description,
-          reference_file_name, reference_file_type, reference_file_size, reference_file_key,
-          reference_file_token, reference_file_url, email_status, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(
-        submission.id || crypto.randomUUID(),
-        submission.name || "未填寫",
-        submission.company || "未填寫",
-        submission.email || "未填寫",
-        submission.phone || "未填寫",
-        submission.projectType || "一般諮詢",
-        submission.timeline || "",
-        submission.quantity || "",
-        submission.description || "無需求描述",
-        submission.referenceFileName || null,
-        submission.referenceFileType || null,
-        submission.referenceFileSize || null,
-        submission.referenceFileKey || null,
-        submission.referenceFileToken || null,
-        submission.referenceFileUrl || null,
-        "pending",
-        nowIso
-      ).run();
-      
-      dbSaved = true;
-      console.log("SUCCESS: D1 Record Saved!");
-    } catch (dbError) {
-      console.error("D1 Database Insert Error:", dbError);
-    }
   } else {
-    console.warn("Cloudflare D1 DB binding is missing!");
+    submission.referenceFileKey = null;
+    submission.referenceFileToken = null;
+    submission.referenceFileUrl = null;
   }
 
-  // 3. 發送 Resend Email 通知
-  let emailSent = false;
-  const apiKey = bindings?.RESEND_API_KEY || process.env.RESEND_API_KEY;
-  if (apiKey) {
-    try {
-      await sendResendEmail(
-        submission,
-        apiKey,
-        "onboarding@resend.dev",
-        fetcher
-      );
-      emailSent = true;
-    } catch (emailError) {
-      console.error("Resend Email Send Error:", emailError);
+  try {
+    await bindings.DB.prepare(`
+      INSERT INTO contact_inquiries (
+        id, name, company, email, phone, project_type, timeline, quantity, description,
+        reference_file_name, reference_file_type, reference_file_size, reference_file_key,
+        reference_file_token, reference_file_url, email_status, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+    `).bind(
+      submission.id,
+      submission.name,
+      submission.company,
+      submission.email,
+      submission.phone,
+      submission.projectType,
+      submission.timeline || null,
+      submission.quantity || null,
+      submission.description,
+      submission.referenceFileName,
+      submission.referenceFileType,
+      submission.referenceFileSize,
+      submission.referenceFileKey,
+      submission.referenceFileToken,
+      submission.referenceFileUrl,
+      submission.createdAt,
+    ).run();
+  } catch (error) {
+    if (uploadedToR2 && submission.referenceFileKey && bindings.UPLOADS) {
+      await bindings.UPLOADS.delete(submission.referenceFileKey).catch(() => undefined);
     }
-  } else {
-    console.warn("RESEND_API_KEY is missing!");
+    throw error;
   }
 
-  return {
-    id: submission.id,
-    dbSaved,
-    emailSent,
-    uploadedToR2
-  };
+  if (!bindings.RESEND_API_KEY) {
+    const message = "RESEND_API_KEY 尚未設定。";
+    await bindings.DB.prepare(`
+      UPDATE contact_inquiries
+      SET email_status = 'failed', email_error = ?
+      WHERE id = ?
+    `).bind(message, submission.id).run().catch(() => undefined);
+    return { id: submission.id, resendEmailId: null, notificationSent: false, emailError: message };
+  }
+
+  try {
+    const delivery = await sendResendEmail(
+      submission,
+      bindings.RESEND_API_KEY,
+      bindings.RESEND_FROM_EMAIL || "Goodie Website <website@goodie-tw.com>",
+      fetcher,
+    );
+    const deliveryWarning = [storageWarning, delivery.warning].filter(Boolean).join("；") || null;
+    await bindings.DB.prepare(`
+      UPDATE contact_inquiries
+      SET email_status = 'sent', resend_email_id = ?, email_error = ?, emailed_at = ?
+      WHERE id = ?
+    `).bind(delivery.id, deliveryWarning, new Date().toISOString(), submission.id).run();
+    return {
+      id: submission.id,
+      resendEmailId: delivery.id,
+      notificationSent: true,
+      attachmentIncluded: delivery.attachmentIncluded,
+      warning: deliveryWarning,
+    };
+  } catch (error) {
+    const message = [storageWarning, errorMessage(error)].filter(Boolean).join("；").slice(0, 1000);
+    await bindings.DB.prepare(`
+      UPDATE contact_inquiries
+      SET email_status = 'failed', email_error = ?
+      WHERE id = ?
+    `).bind(message, submission.id).run().catch(() => undefined);
+    return { id: submission.id, resendEmailId: null, notificationSent: false, emailError: message };
+  }
 }

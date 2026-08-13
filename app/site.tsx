@@ -89,6 +89,7 @@ function Hero({ page = "home" }: { page?: SitePage }) {
 function InquiryForm({ className = "" }: { className?: string }) {
   const [status, setStatus] = useState<"idle" | "submitting" | "sent" | "error">("idle");
   const [message, setMessage] = useState("");
+  const [referenceFile, setReferenceFile] = useState<File | null>(null);
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -97,9 +98,16 @@ function InquiryForm({ className = "" }: { className?: string }) {
     setMessage("");
 
     try {
+      const formData = new FormData(form);
+      if (referenceFile) {
+        formData.set("reference", referenceFile, referenceFile.name);
+      } else {
+        formData.delete("reference");
+      }
+
       const response = await fetch("/api/contact", {
         method: "POST",
-        body: new FormData(form),
+        body: formData,
         headers: { Accept: "application/json" },
       });
       const result = await response.json().catch(() => null) as { message?: string } | null;
@@ -109,6 +117,7 @@ function InquiryForm({ className = "" }: { className?: string }) {
       }
 
       form.reset();
+      setReferenceFile(null);
       setStatus("sent");
       setMessage(result?.message || "需求已送出，我們會盡快與您聯繫。");
     } catch (error) {
@@ -154,8 +163,13 @@ function InquiryForm({ className = "" }: { className?: string }) {
         <textarea name="description" placeholder="請簡單說明您的需求、預算、數量、交期等資訊，我們將盡快與您聯繫。" required />
       </label>
       <label className="full upload">上傳參考圖片（選填）
-        <input name="reference" type="file" accept=".jpg,.jpeg,.png,.pdf,.ai" />
-        <small>支援 JPG / PNG / PDF / AI 檔案</small>
+        <input
+          name="reference"
+          type="file"
+          accept=".jpg,.jpeg,.png,.pdf,.ai"
+          onChange={(event) => setReferenceFile(event.currentTarget.files?.[0] ?? null)}
+        />
+        <small>{referenceFile ? `已選擇：${referenceFile.name}` : "支援 JPG / PNG / PDF / AI 檔案（上限 8MB）"}</small>
       </label>
       <button className="dark-button full" type="submit" disabled={status === "submitting"}>
         {status === "submitting" ? "正在送出…" : "送出需求 →"}
