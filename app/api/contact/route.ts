@@ -7,13 +7,12 @@ function getFileExtension(filename: string) {
 }
 
 function makeSafeFilename(filename: string) {
-  // 支援中文與英文檔名清理，確保不為空
   const ext = getFileExtension(filename);
   const cleanName = filename.replace(/[^\w\u4e00-\u9fa5.-]/g, "_").slice(0, 80);
   return cleanName || `file_${Date.now()}.${ext || 'png'}`;
 }
 
-export async function POST(request: Request) {
+export async function POST(request: Request, context?: any) {
   try {
     let submission: any = {};
     const contentType = request.headers.get("content-type") || "";
@@ -21,7 +20,6 @@ export async function POST(request: Request) {
     if (contentType.toLowerCase().includes("multipart/form-data")) {
       const formData = await request.formData();
       
-      // 1. 取得上傳檔案（兼容多種 key 名稱）
       const fileEntry = formData.get("reference") || formData.get("file") || formData.get("referenceFile");
       let file: File | null = null;
       
@@ -32,7 +30,6 @@ export async function POST(request: Request) {
       const id = crypto.randomUUID();
       const fileName = file ? makeSafeFilename(file.name) : null;
 
-      // 2. 組裝極度安全的 submission 物件
       submission = {
         id,
         name: formData.get("name")?.toString().trim() || "未填寫",
@@ -44,7 +41,6 @@ export async function POST(request: Request) {
         quantity: formData.get("quantity")?.toString() || "",
         description: formData.get("description")?.toString() || "無描述",
         
-        // 檔案資訊補全
         referenceFile: file,
         referenceFileName: fileName,
         referenceFileType: file?.type || "image/png",
@@ -63,15 +59,26 @@ export async function POST(request: Request) {
       };
     }
 
-    // 3. 安全取得 Cloudflare 注入的 Bindings
+    // 關鍵修復：從全方位環境（包含 Cloudflare Request Context）精準取出 DB / RESEND_API_KEY
+    const reqCtx = (request as any).env || (request as any).context?.env || context?.env || {};
     const g = globalThis as any;
     const p = (process as any).env || {};
 
     const activeEnv = {
-      DB: g.DB || g.__env__?.DB || p.DB,
-      RESEND_API_KEY: g.RESEND_API_KEY || g.__env__?.RESEND_API_KEY || p.RESEND_API_KEY,
-      UPLOADS: g.UPLOADS || g.__env__?.UPLOADS || p.UPLOADS,
+      DB: reqCtx.DB || g.DB || g.__env__?.DB || p.DB,
+      RESEND_API_KEY: reqCtx.RESEND_API_KEY || g.RESEND_API_KEY || g.__env__?.RESEND_API_KEY || p.RESEND_API_KEY,
+      UPLOADS: reqCtx.UPLOADS || g.UPLOADS || g.__env__?.UPLOADS || p.UPLOADS,
     };
+
+    console.log("DB Binding Check Status:", !!activeEnv.DB);
+
+    // 如果未找到 DB Binding，回傳警告
+    if (!activeEnv.DB) {
+      return Response.json({
+        ok: false,
+        message: "Cloudflare D1 的 DB 綁定尚未設定。",
+      });
+    }
 
     // 4. 執行存庫與寄信
     const result = await saveAndNotifyContact(activeEnv as any, submission);
@@ -85,10 +92,9 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error("API Route Error Catch:", error);
 
-    // 降級保護：避免回傳 400/500，讓前端跳出警示，而是提示成功
     return Response.json({
       ok: false,
       message: error?.message || "送出時發生問題，請稍後再試。",
-    }, { status: 200 });
+    });
   }
 }
