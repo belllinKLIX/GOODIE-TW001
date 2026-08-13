@@ -1,26 +1,10 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "goodie-tw001",
-  "main": "dist/server/index.js",
-  "assets": {
-    "directory": "dist/client"
-  },
-  "compatibility_date": "2024-09-23",
-  "compatibility_flags": [
-    "nodejs_compat"
-  ],
-
-  // 1. 綁定 D1 資料庫
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "goodie-db",
-      "database_id": "67ec88f6-f947-4b63-a640-033e8cf718bb"
-    }
-  ],
-
-  // 2. 寫入發信金鑰 (RESEND_API_KEY)
-  "vars": {
-    "RESEND_API_KEY": "re_MLR8he7Q_NXA6voGRIeGFnGNEESM162yU"
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "goodie-tw-website",
+  "main": "vinext/server/fetch-handler",
+  "compatibility_date": "2026-08-12",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
   }
 }

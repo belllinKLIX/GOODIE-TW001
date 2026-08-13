@@ -1,0 +1,2 @@
+RESEND_API_KEY=re_replace_with_your_cloudflare_secret
+RESEND_FROM_EMAIL=Goodie Website <website@goodie-tw.com>
