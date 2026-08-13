@@ -1,226 +1,19 @@
-export interface D1PreparedStatementLike {
-  bind(...values: unknown[]): D1PreparedStatementLike;
-  run<T = unknown>(): Promise<T>;
-  first<T = Record<string, unknown>>(): Promise<T | null>;
-}
-
-export interface D1DatabaseLike {
-  prepare(query: string): D1PreparedStatementLike;
-}
-
-export interface R2ObjectLike {
-  body: ReadableStream<Uint8Array>;
-  httpEtag: string;
-  size: number;
-}
-
-export interface R2BucketLike {
-  put(
-    key: string,
-    value: ReadableStream<Uint8Array> | ArrayBuffer,
-    options?: {
-      httpMetadata?: { contentType?: string };
-      customMetadata?: Record<string, string>;
-    },
-  ): Promise<unknown>;
-  get(key: string): Promise<R2ObjectLike | null>;
-  delete(key: string): Promise<void>;
-}
-
-export interface ContactBindings {
-  DB?: D1DatabaseLike;
-  RESEND_API_KEY?: string;
-  RESEND_FROM_EMAIL?: string;
-  UPLOADS?: R2BucketLike;
-}
-
-export interface ContactSubmission {
-  id: string;
-  name: string;
-  company: string;
-  email: string;
-  phone: string;
-  projectType: string;
-  timeline: string;
-  quantity: string;
-  description: string;
-  referenceFile: File | null;
-  referenceFileName: string | null;
-  referenceFileType: string | null;
-  referenceFileSize: number | null;
-  referenceFileKey: string | null;
-  referenceFileToken: string | null;
-  referenceFileUrl: string | null;
-  createdAt: string;
-}
-
-const MAX_FILE_SIZE = 8 * 1024 * 1024;
-const ALLOWED_FILE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "pdf", "ai"]);
-const FILE_TYPES: Record<string, string> = {
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  png: "image/png",
-  pdf: "application/pdf",
-  ai: "application/postscript",
-};
-
-function cleanText(value: FormDataEntryValue | null, maximum: number) {
-  return typeof value === "string" ? value.trim().slice(0, maximum) : "";
-}
-
-function fileExtension(filename: string) {
-  return filename.includes(".") ? filename.split(".").pop()!.toLowerCase() : "";
-}
-
-function safeFilename(filename: string) {
-  const normalized = filename.normalize("NFKC").replace(/[^\p{L}\p{N}._-]+/gu, "-");
-  return normalized.slice(0, 120) || "reference-file";
-}
-
-function isFileLike(value: FormDataEntryValue | null): value is File {
-  if (!value || typeof value === "string") return false;
-  const candidate = value as File;
-  return typeof candidate.name === "string"
-    && typeof candidate.size === "number"
-    && typeof candidate.arrayBuffer === "function";
-}
-
-function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : String(error);
-}
-
-export function parseContactForm(formData: FormData): ContactSubmission {
-  const name = cleanText(formData.get("name"), 100);
-  const company = cleanText(formData.get("company"), 160);
-  const email = cleanText(formData.get("email"), 254).toLowerCase();
-  const phone = cleanText(formData.get("phone"), 60);
-  const projectType = cleanText(formData.get("projectType"), 100);
-  const timeline = cleanText(formData.get("timeline"), 100);
-  const quantity = cleanText(formData.get("quantity"), 100);
-  const description = cleanText(formData.get("description"), 4000);
-
-  if (!name || !company || !email || !phone || !projectType || !description) {
-    throw new ContactValidationError("請填寫所有必填欄位。");
-  }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw new ContactValidationError("請輸入正確的電子郵件地址。");
-  }
-
-  const referenceEntry = formData.get("reference");
-  if (isFileLike(referenceEntry) && referenceEntry.size === 0) {
-    throw new ContactValidationError("上傳檔案不可為空白檔案。");
-  }
-  const referenceFile = isFileLike(referenceEntry) ? referenceEntry : null;
-  if (referenceFile) {
-    if (referenceFile.size > MAX_FILE_SIZE) {
-      throw new ContactValidationError("上傳檔案不可超過 8MB。");
-    }
-    if (!ALLOWED_FILE_EXTENSIONS.has(fileExtension(referenceFile.name))) {
-      throw new ContactValidationError("上傳檔案僅支援 JPG、PNG、PDF 或 AI。");
-    }
-  }
-
-  const id = crypto.randomUUID();
-  const referenceFileName = referenceFile ? safeFilename(referenceFile.name) : null;
-  const referenceFileExtension = referenceFileName ? fileExtension(referenceFileName) : "";
-  const referenceFileKey = referenceFile
-    ? `contact-submissions/${new Date().toISOString().slice(0, 7)}/${id}/${referenceFileName}`
-    : null;
-
-  return {
-    id,
-    name,
-    company,
-    email,
-    phone,
-    projectType,
-    timeline,
-    quantity,
-    description,
-    referenceFile,
-    referenceFileName,
-    referenceFileType: referenceFile ? (referenceFile.type || FILE_TYPES[referenceFileExtension] || "application/octet-stream") : null,
-    referenceFileSize: referenceFile?.size || null,
-    referenceFileKey,
-    referenceFileToken: referenceFile ? crypto.randomUUID() : null,
-    referenceFileUrl: null,
-    createdAt: new Date().toISOString(),
-  };
-}
-
-export class ContactValidationError extends Error {}
-
-export function escapeHtml(value: string) {
-  return value.replace(/[&<>"']/g, (character) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#039;",
-  })[character]!);
-}
-
-function display(value: string | null) {
-  return value ? escapeHtml(value) : "未填寫";
-}
-
-export function buildContactEmailHtml(submission: ContactSubmission) {
-  const rows = [
-    ["姓名", submission.name],
-    ["公司名稱", submission.company],
-    ["Email", submission.email],
-    ["聯絡電話", submission.phone],
-    ["專案類型", submission.projectType],
-    ["預計專案時間", submission.timeline],
-    ["預估數量", submission.quantity],
-    ["上傳檔案", submission.referenceFileUrl || submission.referenceFileName],
-  ];
-  const fileValue = submission.referenceFileUrl
-    ? `<a href="${escapeHtml(submission.referenceFileUrl)}" style="color:#d88900;font-weight:700">查看上傳檔案</a>`
-    : display(submission.referenceFileName);
-
-  return `<!doctype html>
-<html lang="zh-Hant"><body style="margin:0;background:#f5f5f3;font-family:Arial,'Noto Sans TC',sans-serif;color:#151515">
-  <div style="max-width:680px;margin:0 auto;padding:32px 16px">
-    <div style="background:#ffb400;padding:24px 28px;border-radius:14px 14px 0 0">
-      <div style="font-size:28px;font-weight:900">Goodie</div>
-      <div style="margin-top:8px;font-size:18px;font-weight:700">網站收到新的專案需求</div>
-    </div>
-    <div style="background:#fff;padding:26px 28px;border-radius:0 0 14px 14px;box-shadow:0 8px 30px rgba(0,0,0,.06)">
-      <table role="presentation" style="width:100%;border-collapse:collapse">
-        ${rows.map(([label, value]) => `<tr><td style="width:140px;padding:11px 0;border-bottom:1px solid #eee;color:#777;vertical-align:top">${label}</td><td style="padding:11px 0;border-bottom:1px solid #eee;font-weight:600;vertical-align:top">${label === "上傳檔案" ? fileValue : display(value)}</td></tr>`).join("")}
-      </table>
-      <div style="margin-top:24px;color:#777">需求描述</div>
-      <div style="margin-top:8px;padding:18px;background:#fff8e8;border-radius:10px;line-height:1.75;white-space:pre-wrap">${display(submission.description)}</div>
-      <div style="margin-top:24px;font-size:12px;color:#999">案件編號：${escapeHtml(submission.id)}｜送出時間：${escapeHtml(submission.createdAt)}</div>
-    </div>
-  </div>
-</body></html>`;
-}
-
-function arrayBufferToBase64(buffer: ArrayBuffer) {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
-    binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
-  }
-  return btoa(binary);
-}
-
 async function sendResendEmail(
   submission: ContactSubmission,
   apiKey: string,
   fromEmail: string,
   fetcher: typeof fetch,
 ) {
+  // 1. 建立基礎 Payload (如果尚未驗證自訂網域，發件人請沿用 "Goodie Website <onboarding@resend.dev>")
   const basePayload: Record<string, unknown> = {
-    from: fromEmail,
+    from: fromEmail || "Goodie Website <onboarding@resend.dev>",
     to: ["bell.lin@klixtw.com"],
     reply_to: submission.email,
     subject: `【Goodie 網站詢問】${submission.company}｜${submission.name}`,
     html: buildContactEmailHtml(submission),
   };
 
+  // 封裝內部發送 API
   async function deliver(payload: Record<string, unknown>, attempt: string) {
     const response = await fetcher("https://api.resend.com/emails", {
       method: "POST",
@@ -232,149 +25,57 @@ async function sendResendEmail(
       },
       body: JSON.stringify(payload),
     });
+
     const result = await response.json().catch(() => null) as { id?: string; message?: string; name?: string } | null;
+
     if (!response.ok || !result?.id) {
       throw new Error(result?.message || result?.name || `Resend API 回傳 ${response.status}`);
     }
+
     return result.id;
   }
 
+  // 若沒有上傳附件，直接寄送純文字通知信
   if (!submission.referenceFile || !submission.referenceFileName) {
-    return { id: await deliver(basePayload, "notification-only"), attachmentIncluded: false, warning: null };
+    const resendId = await deliver(basePayload, "notification-only");
+    return { id: resendId, attachmentIncluded: false, warning: null };
   }
 
+  // 2. 轉碼處理附件（加入 Try-Catch 防止轉碼失敗導致整個發信崩潰）
   let attachment: { filename: string; content: string } | null = null;
   let warning: string | null = null;
+
   try {
-    attachment = {
-      filename: submission.referenceFileName,
-      content: arrayBufferToBase64(await submission.referenceFile.arrayBuffer()),
-    };
+    const buffer = await submission.referenceFile.arrayBuffer();
+    if (buffer && buffer.byteLength > 0) {
+      attachment = {
+        filename: submission.referenceFileName,
+        content: arrayBufferToBase64(buffer),
+      };
+    }
   } catch (error) {
-    warning = `附件轉換失敗，已改寄無附件通知信：${errorMessage(error)}`;
+    warning = `附件轉碼失敗，已自動改寄無附件通知信：${errorMessage(error)}`;
   }
 
+  // 3. 若有成功轉碼的附件，優先嘗試發送帶附件的信件
   if (attachment) {
     try {
+      const resendId = await deliver({ ...basePayload, attachments: [attachment] }, "with-attachment");
       return {
-        id: await deliver({ ...basePayload, attachments: [attachment] }, "with-attachment"),
+        id: resendId,
         attachmentIncluded: true,
         warning: null,
       };
     } catch (error) {
-      warning = `附件寄送失敗，已改寄無附件通知信：${errorMessage(error)}`;
+      warning = `附件發送失敗，已降級改寄無附件通知信：${errorMessage(error)}`;
     }
   }
 
+  // 4. 降級保護：若附件寄送失敗，發送純文字通知信
+  const fallbackResendId = await deliver(basePayload, "attachment-fallback");
   return {
-    id: await deliver(basePayload, "attachment-fallback"),
+    id: fallbackResendId,
     attachmentIncluded: false,
     warning,
   };
-}
-
-export async function saveAndNotifyContact(
-  bindings: ContactBindings,
-  submission: ContactSubmission,
-  fetcher: typeof fetch = fetch,
-) {
-  if (!bindings.DB) throw new Error("Cloudflare D1 的 DB 綁定尚未設定。");
-
-  let uploadedToR2 = false;
-  let storageWarning: string | null = null;
-  if (submission.referenceFile && submission.referenceFileKey && bindings.UPLOADS) {
-    try {
-      await bindings.UPLOADS.put(submission.referenceFileKey, submission.referenceFile.stream(), {
-        httpMetadata: { contentType: submission.referenceFileType || "application/octet-stream" },
-        customMetadata: { submissionId: submission.id, originalName: submission.referenceFileName || "reference-file" },
-      });
-      uploadedToR2 = true;
-      if (submission.referenceFileToken) {
-        const fileUrl = new URL(`/api/contact/files/${submission.id}`, "https://goodie-tw.com");
-        fileUrl.searchParams.set("token", submission.referenceFileToken);
-        submission.referenceFileUrl = fileUrl.toString();
-      }
-    } catch (error) {
-      storageWarning = `R2 上傳失敗，已保留檔案資訊並改用 Email 附件：${errorMessage(error)}`;
-      submission.referenceFileKey = null;
-      submission.referenceFileToken = null;
-      submission.referenceFileUrl = null;
-    }
-  } else {
-    submission.referenceFileKey = null;
-    submission.referenceFileToken = null;
-    submission.referenceFileUrl = null;
-  }
-
-  try {
-    await bindings.DB.prepare(`
-      INSERT INTO contact_inquiries (
-        id, name, company, email, phone, project_type, timeline, quantity, description,
-        reference_file_name, reference_file_type, reference_file_size, reference_file_key,
-        reference_file_token, reference_file_url, email_status, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
-    `).bind(
-      submission.id,
-      submission.name,
-      submission.company,
-      submission.email,
-      submission.phone,
-      submission.projectType,
-      submission.timeline || null,
-      submission.quantity || null,
-      submission.description,
-      submission.referenceFileName,
-      submission.referenceFileType,
-      submission.referenceFileSize,
-      submission.referenceFileKey,
-      submission.referenceFileToken,
-      submission.referenceFileUrl,
-      submission.createdAt,
-    ).run();
-  } catch (error) {
-    if (uploadedToR2 && submission.referenceFileKey && bindings.UPLOADS) {
-      await bindings.UPLOADS.delete(submission.referenceFileKey).catch(() => undefined);
-    }
-    throw error;
-  }
-
-  if (!bindings.RESEND_API_KEY) {
-    const message = "RESEND_API_KEY 尚未設定。";
-    await bindings.DB.prepare(`
-      UPDATE contact_inquiries
-      SET email_status = 'failed', email_error = ?
-      WHERE id = ?
-    `).bind(message, submission.id).run().catch(() => undefined);
-    return { id: submission.id, resendEmailId: null, notificationSent: false, emailError: message };
-  }
-
-  try {
-    const delivery = await sendResendEmail(
-      submission,
-      bindings.RESEND_API_KEY,
-      bindings.RESEND_FROM_EMAIL || "Goodie Website <website@goodie-tw.com>",
-      fetcher,
-    );
-    const deliveryWarning = [storageWarning, delivery.warning].filter(Boolean).join("；") || null;
-    await bindings.DB.prepare(`
-      UPDATE contact_inquiries
-      SET email_status = 'sent', resend_email_id = ?, email_error = ?, emailed_at = ?
-      WHERE id = ?
-    `).bind(delivery.id, deliveryWarning, new Date().toISOString(), submission.id).run();
-    return {
-      id: submission.id,
-      resendEmailId: delivery.id,
-      notificationSent: true,
-      attachmentIncluded: delivery.attachmentIncluded,
-      warning: deliveryWarning,
-    };
-  } catch (error) {
-    const message = [storageWarning, errorMessage(error)].filter(Boolean).join("；").slice(0, 1000);
-    await bindings.DB.prepare(`
-      UPDATE contact_inquiries
-      SET email_status = 'failed', email_error = ?
-      WHERE id = ?
-    `).bind(message, submission.id).run().catch(() => undefined);
-    return { id: submission.id, resendEmailId: null, notificationSent: false, emailError: message };
-  }
 }
