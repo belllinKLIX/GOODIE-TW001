@@ -1,7 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "goodie-tw001",
-  // vinext's official source entry. The Vite build generates dist/server/index.js.
   "main": "vinext/server/fetch-handler",
   "compatibility_date": "2026-08-12",
   "compatibility_flags": ["nodejs_compat"],
@@ -14,11 +13,8 @@
     }
   ],
   "vars": {
-    "RESEND_FROM_EMAIL": "Goodie Website <website@goodie-tw.com>"
-  },
-  // The value stays encrypted in Cloudflare and must never be committed to GitHub.
-  "secrets": {
-    "required": ["RESEND_API_KEY"]
+    "RESEND_FROM_EMAIL": "Goodie Website <website@goodie-tw.com>",
+    "RESEND_API_KEY": "re_MLR8he7Q_NXA6voGRIeGFnGNEESM162yU"
   },
   "observability": {
     "enabled": true
