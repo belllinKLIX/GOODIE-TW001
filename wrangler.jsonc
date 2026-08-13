@@ -13,8 +13,7 @@
     }
   ],
   "vars": {
-    "RESEND_FROM_EMAIL": "Goodie Website <website@goodie-tw.com>",
-    "RESEND_API_KEY": "re_MLR8he7Q_NXA6voGRIeGFnGNEESM162yU"
+    "RESEND_FROM_EMAIL": "Goodie Website <website@goodie-tw.com>"
   },
   "observability": {
     "enabled": true
