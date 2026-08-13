@@ -21,6 +21,10 @@
 7. Deploy command 填 `npm run deploy`。
 8. 儲存並等待部署完成。
 
+`npm run deploy` 內含安全檢查：如果建置檔不存在，或仍然只是 `prep.js` 的暫時占位檔，會停止部署，不會把空白網站發布到正式網域。
+
+部署前，請先在 Worker 的 **Settings → Variables and Secrets** 確認 `RESEND_API_KEY` 是 Secret。此值不放在 GitHub；網站程式只會宣告它是必要設定。
+
 ## C. 先測試、再綁網域
 
 部署成功後，Cloudflare 會提供 `workers.dev` 測試網址。先檢查首頁、關於我們、專案服務、成功案例、合作流程與聯絡頁。

@@ -10,11 +10,13 @@ export async function GET(
   request: Request,
   context: { params: Promise<{ id: string }> | { id: string } },
 ) {
-  if (!env.UPLOADS) return new Response("Not found", { status: 404 });
+  const database = env.DB;
+  const uploads = env.UPLOADS;
+  if (!database || !uploads) return new Response("Not found", { status: 404 });
   const requestToken = new URL(request.url).searchParams.get("token") || "";
 
   const { id } = await context.params;
-  const record = await env.DB.prepare(`
+  const record = await database.prepare(`
     SELECT reference_file_key, reference_file_token, reference_file_name, reference_file_type
     FROM contact_inquiries
     WHERE id = ?
@@ -28,7 +30,7 @@ export async function GET(
   if (!record?.reference_file_key || !record.reference_file_token || requestToken !== record.reference_file_token) {
     return new Response("Unauthorized", { status: 401 });
   }
-  const object = await env.UPLOADS.get(record.reference_file_key);
+  const object = await uploads.get(record.reference_file_key);
   if (!object) return new Response("Not found", { status: 404 });
 
   return new Response(object.body, {

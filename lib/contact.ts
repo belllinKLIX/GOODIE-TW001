@@ -28,8 +28,8 @@ export interface R2BucketLike {
 }
 
 export interface ContactBindings {
-  DB: D1DatabaseLike;
-  RESEND_API_KEY: string;
+  DB?: D1DatabaseLike;
+  RESEND_API_KEY?: string;
   RESEND_FROM_EMAIL?: string;
   UPLOADS?: R2BucketLike;
 }
@@ -77,13 +77,12 @@ function safeFilename(filename: string) {
   return normalized.slice(0, 120) || "reference-file";
 }
 
-function isUploadedFile(value: FormDataEntryValue | null): value is File {
+function isFileLike(value: FormDataEntryValue | null): value is File {
   if (!value || typeof value === "string") return false;
   const candidate = value as File;
   return typeof candidate.name === "string"
     && typeof candidate.size === "number"
-    && typeof candidate.arrayBuffer === "function"
-    && candidate.size > 0;
+    && typeof candidate.arrayBuffer === "function";
 }
 
 function errorMessage(error: unknown) {
@@ -108,7 +107,10 @@ export function parseContactForm(formData: FormData): ContactSubmission {
   }
 
   const referenceEntry = formData.get("reference");
-  const referenceFile = isUploadedFile(referenceEntry) ? referenceEntry : null;
+  if (isFileLike(referenceEntry) && referenceEntry.size === 0) {
+    throw new ContactValidationError("上傳檔案不可為空白檔案。");
+  }
+  const referenceFile = isFileLike(referenceEntry) ? referenceEntry : null;
   if (referenceFile) {
     if (referenceFile.size > MAX_FILE_SIZE) {
       throw new ContactValidationError("上傳檔案不可超過 8MB。");

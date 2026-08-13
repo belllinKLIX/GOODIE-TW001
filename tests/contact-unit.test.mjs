@@ -148,6 +148,41 @@ test("retries without an attachment when Resend rejects the attachment", async (
   ]);
 });
 
+test("still stores and emails when attachment conversion throws", async () => {
+  const submission = createSubmissionWithFile();
+  submission.referenceFile = {
+    name: submission.referenceFileName,
+    size: submission.referenceFileSize,
+    type: submission.referenceFileType,
+    async arrayBuffer() {
+      throw new Error("Unreadable attachment");
+    },
+  };
+  const db = createDbMock();
+  const requests = [];
+  const fetcher = async (_url, init) => {
+    requests.push(JSON.parse(init.body));
+    return Response.json({ id: "notification-without-attachment" });
+  };
+
+  const result = await saveAndNotifyContact(
+    { DB: db, RESEND_API_KEY: "test-key" },
+    submission,
+    fetcher,
+  );
+
+  assert.equal(result.notificationSent, true);
+  assert.equal(result.attachmentIncluded, false);
+  assert.equal(requests.length, 1);
+  assert.equal("attachments" in requests[0], false);
+  assert.match(result.warning, /附件轉換失敗/);
+  assert.deepEqual(db.calls[0].values.slice(9, 12), [
+    "需求-簡報.pdf",
+    "application/pdf",
+    10,
+  ]);
+});
+
 test("stores the D1 inquiry even when RESEND_API_KEY is missing", async () => {
   const submission = createSubmissionWithFile();
   const db = createDbMock();

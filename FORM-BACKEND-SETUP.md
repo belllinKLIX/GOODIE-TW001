@@ -10,10 +10,25 @@
 ## Cloudflare 必要設定
 
 - D1 binding：`DB`
-- Secret：`RESEND_API_KEY`
+- D1 資料庫：`goodie-db`（已固定寫入 `wrangler.jsonc`，重新部署不會再解除綁定）
+- Secret：`RESEND_API_KEY`（必須在 Cloudflare 設為 **Secret**，不可放進 `vars` 或上傳 GitHub）
 - Resend 已驗證寄件網域：`goodie-tw.com`
-- 選用環境變數：`RESEND_FROM_EMAIL`，例如 `Goodie Website <website@goodie-tw.com>`
+- 寄件地址：`RESEND_FROM_EMAIL` 已在 `wrangler.jsonc` 設為 `Goodie Website <website@goodie-tw.com>`
 - 選用 R2 binding：`UPLOADS`
+
+`wrangler.jsonc` 已設定 `keep_vars: true`，Cloudflare 儀表板中的一般變數會保留；Cloudflare 的 Secret 本來就不會因一般部署而被刪除。
+
+### Secret 只需要設定一次
+
+在 Cloudflare Worker 的 **Settings → Variables and Secrets** 確認：
+
+- 名稱：`RESEND_API_KEY`
+- 類型：Secret
+- 內容：Resend 提供的 API Key
+
+請勿把真正的 API Key 寫入任何 ZIP、GitHub 檔案或 `wrangler.jsonc`。
+
+> 技術備註：vinext 的正式來源入口必須維持 `vinext/server/fetch-handler`。`dist/server/index.js` 是建置後才產生的檔案，`prep.js` 只先建立暫時占位檔，完整建置會把它安全覆蓋。
 
 ## 初始化 D1
 
