@@ -1,10 +1,26 @@
 {
-  "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "goodie-tw-website",
-  "main": "vinext/server/fetch-handler",
-  "compatibility_date": "2026-08-12",
-  "compatibility_flags": ["nodejs_compat"],
-  "observability": {
-    "enabled": true
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "goodie-tw001",
+  "main": "dist/server/index.js",
+  "assets": {
+    "directory": "dist/client"
+  },
+  "compatibility_date": "2024-09-23",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+
+  // 1. 強制寫死 D1 綁定（確保部署時永遠不被覆蓋清空）
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "goodie-db",
+      "database_id": "67ec88f6-f947-4b63-a640-033e8cf718bb"
+    }
+  ],
+
+  // 2. 強制寫死發信金鑰
+  "vars": {
+    "RESEND_API_KEY": "re_MLR8he7Q_NXA6voGRIeGFnGNEESM162yU"
   }
 }
