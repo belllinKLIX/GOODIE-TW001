@@ -64,9 +64,6 @@ const FILE_TYPES: Record<string, string> = {
   ai: "application/postscript",
 };
 
-// 修正 1: 匯出 ContactValidationError
-export class ContactValidationError extends Error {}
-
 function cleanText(value: FormDataEntryValue | null, maximum: number) {
   return typeof value === "string" ? value.trim().slice(0, maximum) : "";
 }
@@ -92,7 +89,6 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 
-// 修正 2: 匯出 parseContactForm
 export function parseContactForm(formData: FormData): ContactSubmission {
   const name = cleanText(formData.get("name"), 100);
   const company = cleanText(formData.get("company"), 160);
@@ -151,6 +147,8 @@ export function parseContactForm(formData: FormData): ContactSubmission {
     createdAt: new Date().toISOString(),
   };
 }
+
+export class ContactValidationError extends Error {}
 
 export function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (character) => ({
@@ -216,7 +214,7 @@ async function sendResendEmail(
   fetcher: typeof fetch,
 ) {
   const basePayload: Record<string, unknown> = {
-    from: fromEmail || "Goodie Website <onboarding@resend.dev>",
+    from: fromEmail,
     to: ["bell.lin@klixtw.com"],
     reply_to: submission.email,
     subject: `【Goodie 網站詢問】${submission.company}｜${submission.name}`,
@@ -234,58 +232,47 @@ async function sendResendEmail(
       },
       body: JSON.stringify(payload),
     });
-
     const result = await response.json().catch(() => null) as { id?: string; message?: string; name?: string } | null;
-
     if (!response.ok || !result?.id) {
       throw new Error(result?.message || result?.name || `Resend API 回傳 ${response.status}`);
     }
-
     return result.id;
   }
 
   if (!submission.referenceFile || !submission.referenceFileName) {
-    const resendId = await deliver(basePayload, "notification-only");
-    return { id: resendId, attachmentIncluded: false, warning: null };
+    return { id: await deliver(basePayload, "notification-only"), attachmentIncluded: false, warning: null };
   }
 
   let attachment: { filename: string; content: string } | null = null;
   let warning: string | null = null;
-
   try {
-    const buffer = await submission.referenceFile.arrayBuffer();
-    if (buffer && buffer.byteLength > 0) {
-      attachment = {
-        filename: submission.referenceFileName,
-        content: arrayBufferToBase64(buffer),
-      };
-    }
+    attachment = {
+      filename: submission.referenceFileName,
+      content: arrayBufferToBase64(await submission.referenceFile.arrayBuffer()),
+    };
   } catch (error) {
-    warning = `附件轉碼失敗，已自動改寄無附件通知信：${errorMessage(error)}`;
+    warning = `附件轉換失敗，已改寄無附件通知信：${errorMessage(error)}`;
   }
 
   if (attachment) {
     try {
-      const resendId = await deliver({ ...basePayload, attachments: [attachment] }, "with-attachment");
       return {
-        id: resendId,
+        id: await deliver({ ...basePayload, attachments: [attachment] }, "with-attachment"),
         attachmentIncluded: true,
         warning: null,
       };
     } catch (error) {
-      warning = `附件發送失敗，已降級改寄無附件通知信：${errorMessage(error)}`;
+      warning = `附件寄送失敗，已改寄無附件通知信：${errorMessage(error)}`;
     }
   }
 
-  const fallbackResendId = await deliver(basePayload, "attachment-fallback");
   return {
-    id: fallbackResendId,
+    id: await deliver(basePayload, "attachment-fallback"),
     attachmentIncluded: false,
     warning,
   };
 }
 
-// 修正 3: 匯出 saveAndNotifyContact
 export async function saveAndNotifyContact(
   bindings: ContactBindings,
   submission: ContactSubmission,

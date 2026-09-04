@@ -45,7 +45,7 @@ test("uses the same nine-field inquiry form on every content page", async () => 
     "/services",
     "/cases",
     "/process",
-    "/cases/acme-welcome-kit",
+    "/cases/kobayashi-anime",
   ];
 
   for (const pathname of paths) {
