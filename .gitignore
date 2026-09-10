@@ -16,8 +16,6 @@
 
 # next.js
 /.next/
-/_sites-preview/
-/app/_sites-preview/
 /.vinext/
 /out/
 
