@@ -98,6 +98,11 @@ function ContactBand() {
   return <section className="contact-band"><div className="contact-lead"><h2>準備好與我們合作了嗎？</h2><p>讓 Goodie 成為您品牌的最佳夥伴，創造更多可能。</p><ul><li>☎　{company.phone}</li>{company.email && <li>✉　{company.email}</li>}<li>●　{company.address}</li></ul></div><FullContactForm compact /></section>;
 }
 
+function LineFloating() {
+  const [open, setOpen] = useState(false);
+  return <aside className={`line-floating${open ? " open" : ""}`}><div className="line-popup" aria-hidden={!open}><button type="button" onClick={()=>setOpen(false)} aria-label="關閉 LINE QR Code">×</button><b>LINE 官方帳號</b><img src="/goodie/line-official-qr.png" alt="Goodie LINE 官方帳號 QR Code" /><small>掃描 QR Code 加入好友</small></div><button className="line-fab" type="button" aria-label="開啟 LINE 官方帳號 QR Code" aria-expanded={open} onClick={()=>setOpen(!open)}>LINE</button></aside>;
+}
+
 function FullContactForm({ compact = false }: { compact?: boolean }) {
   const [sent, setSent] = useState(false);
   function submit(e: FormEvent) { e.preventDefault(); setSent(true); }
@@ -167,5 +172,5 @@ function ContactPage() {
 }
 
 export function GoodieSite({ page }: { page: SitePage }) {
-  return <div className="site-shell"><Header page={page}/>{page==="home"&&<HomePage/>}{page==="about"&&<AboutPage/>}{page==="services"&&<ServicesPage/>}{page==="cases"&&<CasesPage/>}{page==="process"&&<ProcessPage/>}{page==="contact"&&<ContactPage/>}{page!=="contact"&&<Footer/>}</div>;
+  return <div className="site-shell"><Header page={page}/>{page==="home"&&<HomePage/>}{page==="about"&&<AboutPage/>}{page==="services"&&<ServicesPage/>}{page==="cases"&&<CasesPage/>}{page==="process"&&<ProcessPage/>}{page==="contact"&&<ContactPage/>}{page!=="contact"&&<Footer/>}<LineFloating /></div>;
 }
