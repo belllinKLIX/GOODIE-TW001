@@ -12,6 +12,13 @@ const processSteps = content.processSteps.map(({ number, title, description }) =
 const cases = content.cases;
 type CaseItem = (typeof cases)[number];
 const categoryImages = ["/goodie/category-drinkware.png", "/goodie/category-bags.png", "/goodie/category-lifestyle.png", "/goodie/category-stationery.png", "/goodie/category-outdoor.png", "/goodie/category-apparel.png"];
+const serviceProductImages = [
+  { src: "/goodie/service-brand-activity-v2.png", alt: "聯名服飾、帽子包袋、杯瓶、收藏小物與限定商品" },
+  { src: "/goodie/service-retail-promotion-v2.png", alt: "滿額贈品、集點商品、杯具、生活與收納用品" },
+  { src: "/goodie/service-convention-kit-v2.png", alt: "活動提袋、識別證、護照套、行李吊牌、隨行杯與活動禮包" },
+  { src: "/goodie/service-corporate-gifts-v2.png", alt: "股東會贈品、客戶贈禮、員工禮包、紀念品與節慶禮盒" },
+  { src: "/goodie/service-exhibition-v2.png", alt: "展覽識別證、提袋、工作服、文具、接待贈品與展場周邊" },
+];
 const caseImages: Record<string, string> = {
   "kobayashi-anime": "/goodie/case-kobayashi.png",
   "crayon-shinchan": "/goodie/case-shinchan.png",
@@ -88,13 +95,13 @@ function Hero({ page = "home" }: { page?: SitePage }) {
 
 function ContactBand() {
   const company = content.company;
-  return <section className="contact-band"><div className="contact-lead"><h2>準備好與我們合作了嗎？</h2><p>讓 Goodie 成為您品牌的最佳夥伴，創造更多可能。</p><ul><li>☎　{company.phone}</li>{company.email && <li>✉　{company.email}</li>}<li>●　{company.address}</li></ul></div><QuickForm /></section>;
+  return <section className="contact-band"><div className="contact-lead"><h2>準備好與我們合作了嗎？</h2><p>讓 Goodie 成為您品牌的最佳夥伴，創造更多可能。</p><ul><li>☎　{company.phone}</li>{company.email && <li>✉　{company.email}</li>}<li>●　{company.address}</li></ul></div><FullContactForm compact /></section>;
 }
 
-function QuickForm() {
+function FullContactForm({ compact = false }: { compact?: boolean }) {
   const [sent, setSent] = useState(false);
   function submit(e: FormEvent) { e.preventDefault(); setSent(true); }
-  return <form className="quick-form" onSubmit={submit}><input aria-label="姓名" placeholder="姓名" required /><input aria-label="公司名稱" placeholder="公司名稱" required /><input type="email" aria-label="電子郵件" placeholder="電子郵件" required /><input aria-label="聯絡電話" placeholder="聯絡電話" /><textarea aria-label="需求描述" placeholder="您的需求或專案描述" required /><button className="dark-button" type="submit">{sent ? "已收到，我們會與您聯絡" : "送出需求 →"}</button></form>;
+  return <form className={`contact-form${compact ? " contact-band-form" : ""}`} onSubmit={submit}><label>姓名 *<input placeholder="請輸入您的姓名" required /></label><label>公司名稱 *<input placeholder="請輸入公司名稱" required /></label><label>電子郵件 *<input type="email" placeholder="請輸入電子郵件" required /></label><label>聯絡電話 *<input placeholder="請輸入聯絡電話" required /></label><label className="full">專案類型 *<select required defaultValue=""><option value="" disabled>請選擇專案類型</option>{contactProjectTypes.map((title)=><option key={title}>{title}</option>)}</select></label><label>預計專案時間<input placeholder="例如：希望於 3 個月內完成" /></label><label>預估數量<input placeholder="例如：1,000 份" /></label><label className="full">您的需求或專案描述 *<textarea placeholder="請簡單說明您的需求、預算、數量、交期等資訊，我們將盡快與您聯繫。" required /></label><label className="full upload">上傳參考圖片（選填）<input type="file" accept=".jpg,.jpeg,.png,.pdf,.ai" /><small>支援 JPG / PNG / PDF / AI 檔案</small></label><button className="dark-button full" type="submit">{sent?"需求已送出，謝謝您":"開始專案 →"}</button></form>;
 }
 
 function Footer() {
@@ -131,7 +138,7 @@ function ServicesPage() {
     const timer = window.setTimeout(() => document.getElementById(`service-${requested}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 60);
     return () => window.clearTimeout(timer);
   }, []);
-  return <><Hero page="services" /><main><section className="section"><div className="container"><SectionTitle center>我們的專案服務</SectionTitle><p className="center-copy">針對不同情境與需求，提供最適合的品牌商品方案</p><div className="accordion">{serviceCategories.map(({title,description,detail,pairings},i)=><article id={`service-${i}`} className={open===i?"expanded":""} key={title}><button onClick={()=>setOpen(open===i?-1:i)} aria-expanded={open===i}><ServiceIcon index={i}/><span><strong>{title}</strong>{open!==i&&<small>{description}</small>}</span><em>{open===i?"⌃":"⌄"}</em></button>{open===i&&<div className="service-detail"><div className="service-purpose"><p>{detail}</p><b>{description}</b></div><div className="service-pairings"><h4>常見搭配</h4><ul>{pairings.map((product)=><li key={product}>{product}</li>)}</ul></div><div className="service-products-photo"><img src="/ref-services-expanded.png" alt="Goodie 客製商品組合展示" /></div></div>}</article>)}</div><aside className="service-consultation"><ServiceIcon index={services.length-1}/><div><small>需要不同的商品組合嗎？</small><h3>{consultation.title}</h3><p>{consultation.detail}</p></div><ArrowButton href="/contact">告訴我們您的需求</ArrowButton></aside></div></section></main><ContactBand /></>;
+  return <><Hero page="services" /><main><section className="section"><div className="container"><SectionTitle center>我們的專案服務</SectionTitle><p className="center-copy">針對不同情境與需求，提供最適合的品牌商品方案</p><div className="accordion">{serviceCategories.map(({title,description,detail,pairings},i)=><article id={`service-${i}`} className={open===i?"expanded":""} key={title}><button onClick={()=>setOpen(open===i?-1:i)} aria-expanded={open===i}><ServiceIcon index={i}/><span><strong>{title}</strong>{open!==i&&<small>{description}</small>}</span><em>{open===i?"⌃":"⌄"}</em></button>{open===i&&<div className="service-detail"><div className="service-purpose"><p>{detail}</p><b>{description}</b></div><div className="service-pairings"><h4>常見搭配</h4><ul>{pairings.map((product)=><li key={product}>{product}</li>)}</ul></div><div className={`service-products-photo service-products-${i}`}><img src={serviceProductImages[i].src} alt={serviceProductImages[i].alt} /></div></div>}</article>)}</div><aside className="service-consultation"><ServiceIcon index={services.length-1}/><div><small>需要不同的商品組合嗎？</small><h3>{consultation.title}</h3><p>{consultation.detail}</p></div><ArrowButton href="/contact">告訴我們您的需求</ArrowButton></aside></div></section></main><ContactBand /></>;
 }
 
 function CaseCard({ item, index: _index, home = false }: { item: CaseItem; index: number; home?: boolean }) {
@@ -155,10 +162,8 @@ function ProcessPage() {
 }
 
 function ContactPage() {
-  const [sent,setSent] = useState(false);
   const company = content.company;
-  function submit(e: FormEvent){e.preventDefault();setSent(true)}
-  return <main className="contact-page"><div className="contact-page-inner"><section className="contact-intro"><h1>準備好與我們<br/>合作了嗎？</h1><i/><p>讓 Goodie 成為您品牌的最佳夥伴，<br/>創造更多可能。</p><ul><li>☎　{company.phone}</li><li>✉　{company.email}</li><li>●　{company.address}<br/><small>　　{company.businessHours}</small></li></ul></section><form className="contact-form" onSubmit={submit}><label>姓名 *<input placeholder="請輸入您的姓名" required /></label><label>公司名稱 *<input placeholder="請輸入公司名稱" required /></label><label>電子郵件 *<input type="email" placeholder="請輸入電子郵件" required /></label><label>聯絡電話 *<input placeholder="請輸入聯絡電話" required /></label><label className="full">專案類型 *<select required defaultValue=""><option value="" disabled>請選擇專案類型</option>{contactProjectTypes.map((title)=><option key={title}>{title}</option>)}</select></label><label>預計專案時間<input placeholder="例如：希望於 3 個月內完成" /></label><label>預估數量<input placeholder="例如：1,000 份" /></label><label className="full">您的需求或專案描述 *<textarea placeholder="請簡單說明您的需求、預算、數量、交期等資訊，我們將盡快與您聯繫。" required /></label><label className="full upload">上傳參考圖片（選填）<input type="file" accept=".jpg,.jpeg,.png,.pdf,.ai" /><small>支援 JPG / PNG / PDF / AI 檔案</small></label><button className="dark-button full" type="submit">{sent?"需求已送出，謝謝您":"開始專案 →"}</button></form></div><p className="contact-copyright">© 2026 Goodie International Co., Ltd. All Rights Reserved.</p></main>;
+  return <main className="contact-page"><div className="contact-page-inner"><section className="contact-intro"><h1>準備好與我們<br/>合作了嗎？</h1><i/><p>讓 Goodie 成為您品牌的最佳夥伴，<br/>創造更多可能。</p><ul><li>☎　{company.phone}</li><li>✉　{company.email}</li><li>●　{company.address}<br/><small>　　{company.businessHours}</small></li></ul></section><FullContactForm /></div><p className="contact-copyright">© 2026 Goodie International Co., Ltd. All Rights Reserved.</p></main>;
 }
 
 export function GoodieSite({ page }: { page: SitePage }) {
