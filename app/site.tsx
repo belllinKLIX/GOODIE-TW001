@@ -110,7 +110,7 @@ function FullContactForm({ compact = false }: { compact?: boolean }) {
 }
 
 function Footer() {
-  return <footer><span>© 2026 Goodie International Co., Ltd. All Rights Reserved.</span></footer>;
+  return <footer><span>© 2026 KLIX INTERNATIONAL CO., LTD. All Rights Reserved.</span></footer>;
 }
 
 function HomePage() {
@@ -168,7 +168,7 @@ function ProcessPage() {
 
 function ContactPage() {
   const company = content.company;
-  return <main className="contact-page"><div className="contact-page-inner"><section className="contact-intro"><h1>準備好與我們<br/>合作了嗎？</h1><i/><p>讓 Goodie 成為您品牌的最佳夥伴，<br/>創造更多可能。</p><ul><li>☎　{company.phone}</li><li>✉　{company.email}</li><li>●　{company.address}<br/><small>　　{company.businessHours}</small></li></ul></section><FullContactForm /></div><p className="contact-copyright">© 2026 Goodie International Co., Ltd. All Rights Reserved.</p></main>;
+  return <main className="contact-page"><div className="contact-page-inner"><section className="contact-intro"><h1>準備好與我們<br/>合作了嗎？</h1><i/><p>讓 Goodie 成為您品牌的最佳夥伴，<br/>創造更多可能。</p><ul><li>☎　{company.phone}</li><li>✉　{company.email}</li><li>●　{company.address}<br/><small>　　{company.businessHours}</small></li></ul></section><FullContactForm /></div><p className="contact-copyright">© 2026 KLIX INTERNATIONAL CO., LTD. All Rights Reserved.</p></main>;
 }
 
 export function GoodieSite({ page }: { page: SitePage }) {
