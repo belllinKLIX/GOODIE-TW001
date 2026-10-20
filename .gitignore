@@ -2,12 +2,6 @@
 
 # dependencies
 /.git/
-/.git2/
-/.site-sync/
-/.site-sync2/
-/.tmp-dulwich/
-/.tmp-pygit2/
-/deliverables/
 /node_modules
 /.pnp
 .pnp.*
@@ -45,9 +39,3 @@ yarn-error.log*
 /.wrangler/
 /outputs/
 /work/
-/.pnpm-store/
-/output/
-/tmp/
-/cfdeploy-test/
-/*.zip
-*.tsbuildinfo
